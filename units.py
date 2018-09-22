@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import math
 import diag
+import basicshuffle
 
 I = np.matrix('1 0; 0 1')
 X = np.matrix('0 1; 1 0')
@@ -21,6 +22,11 @@ class TestDiag(unittest.TestCase):
         self.assertEqual(np.allclose(diag.decompose(math.pi,X),[0,1,0,0]),True)
         self.assertEqual(np.allclose(diag.decompose(math.pi,Y),[0,0,1,0]),True)
         self.assertEqual(np.allclose(diag.decompose(math.pi,Z),[0,0,0,1]),True)
+
+    def test_decomp(self):
+        self.assertEqual(basicshuffle.decompose_1d((I+X)/2),[0.5,0.5,0,0])
+        self.assertEqual(basicshuffle.decompose_1d((I+Y)/2),[0.5,0,0.5,0])
+        self.assertEqual(basicshuffle.decompose_1d((I+Z)/2),[0.5,0,0,0.5])
 
 if __name__ == '__main__':
     unittest.main()
