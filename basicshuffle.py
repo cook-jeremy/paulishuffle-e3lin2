@@ -34,7 +34,7 @@ def pick_pauli(R):
     return [paulis[choice],consts[choice],weights[choice]]
 
 def classical_circuit(INIT):
-    result = (Z*H*INIT*H).trace()
+    result = (Z*X*H*INIT*H*X).trace()
     print(result)
 
 def circuit(INIT):
@@ -50,9 +50,14 @@ def circuit(INIT):
         STATE = H*STATE*H
         r2 = pick_pauli(STATE)
         STATE = r2[0]
+
+        STATE = X*STATE*X
+        r3 = pick_pauli(STATE)
+        STATE = r3[0]
+
         
-        rf = r1[1]*r2[1]
-        pf = r1[2]*r2[2]
+        rf = r1[1]*r2[1]*r3[1]
+        pf = r1[2]*r2[2]*r3[2]
         
         p_hat = (rf/pf)*(STATE*Z).trace()
         results.append(p_hat)
