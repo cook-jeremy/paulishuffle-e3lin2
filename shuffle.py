@@ -10,7 +10,7 @@ paulis = [I,X,Y,Z]
 
 H = np.matrix('1 1; 1 -1')*(1/math.sqrt(2))
 
-# take the kronecker (tensor) product of a list of matrices
+# take the kronecker (tensor) product of a list of len(m) matrices
 def kron(m):
     total = np.kron(m[0], m[1])
     if len(m) > 2:
