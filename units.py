@@ -32,6 +32,9 @@ class TestDiag(unittest.TestCase):
     def test_decomp_2d(self):
         self.assertEqual(twoshuffle.decompose(np.kron(X,Y)),[0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0])
 
+    def test_pick_pauli(self):
+        x = twoshuffle.pick_pauli(np.kron(X,Y))
+        self.assertEqual(x[0].all(), np.kron(X,Y).all())
 
 if __name__ == '__main__':
     unittest.main()
