@@ -8,16 +8,7 @@ Y = np.matrix('0 -1;1 0')*complex(0,1)
 Z = np.matrix('1 0; 0 -1')
 paulis = [I,X,Y,Z]
 
-pauli2 = [I,X]
-
 H = np.matrix('1 1; 1 -1')*(1/math.sqrt(2))
-
-# decompose for n=1: \rho = \sigma_j tr(\rho\sigma_j)
-def decompose_1d(R):
-    c = []
-    for P in paulis:
-        c.append(np.asscalar((0.5*R*P).trace()))
-    return c
 
 # take the kronecker (tensor) product of a list of matrices
 def kron(m):
@@ -46,9 +37,11 @@ def decompose(R):
         c.append(np.asscalar((const*R*B).trace()))
     return c
 
+# TODO FIX THIS FOR N DIMENSIONS
 def pick_pauli(R):
     # decompose the matrix into sum of paulis
     consts = decompose(R)
+    dim = np.log2(R.shape[0])
 
     # find the normalized weights
     consts_sum = 0
@@ -59,8 +52,9 @@ def pick_pauli(R):
         weights.append(abs(i)/consts_sum)
 
     # pick a specific pauli based on the weights
-    choice = np.random.choice(4,p=weights)
-    return [paulis[choice],consts[choice],weights[choice]]
+    choice = np.random.choice(dim, p=weights)
+
+    return [paulis[choice], consts[choice], weights[choice]]
 
 def classical_circuit(INIT):
     result = (Z*X*H*INIT*H*X).trace()
@@ -100,4 +94,3 @@ if __name__ == '__main__':
     INIT = np.matrix([[a*a,a*b],[b*a,b*b]])
     #classical_circuit(INIT)
     #circuit(INIT)
-    #decompose(INIT)
