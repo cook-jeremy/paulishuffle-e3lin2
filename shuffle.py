@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import itertools
+from scipy.linalg import expm
 
 I = np.matrix('1 0; 0 1')
 X = np.matrix('0 1; 1 0')
