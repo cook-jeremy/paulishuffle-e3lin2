@@ -2,8 +2,7 @@ import unittest
 import numpy as np
 import math
 import diag
-import basicshuffle
-import twoshuffle
+import shuffle
 
 I = np.matrix('1 0; 0 1')
 X = np.matrix('0 1; 1 0')
@@ -25,15 +24,15 @@ class TestDiag(unittest.TestCase):
         self.assertEqual(np.allclose(diag.decompose(math.pi,Z),[0,0,0,1]),True)
 
     def test_decomp_1d(self):
-        self.assertEqual(basicshuffle.decompose((I+X)/2),[0.5,0.5,0,0])
-        self.assertEqual(basicshuffle.decompose((I+Y)/2),[0.5,0,0.5,0])
-        self.assertEqual(basicshuffle.decompose((I+Z)/2),[0.5,0,0,0.5])
+        self.assertEqual(shuffle.decompose((I+X)/2),[0.5,0.5,0,0])
+        self.assertEqual(shuffle.decompose((I+Y)/2),[0.5,0,0.5,0])
+        self.assertEqual(shuffle.decompose((I+Z)/2),[0.5,0,0,0.5])
 
     def test_decomp_2d(self):
-        self.assertEqual(twoshuffle.decompose(np.kron(X,Y)),[0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0])
+        self.assertEqual(shuffle.decompose(np.kron(X,Y)),[0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0])
 
     def test_pick_pauli(self):
-        x = twoshuffle.pick_pauli(np.kron(X,Y))
+        x = shuffle.pick_pauli(np.kron(X,Y))
         self.assertEqual(x[0].all(), np.kron(X,Y).all())
 
 if __name__ == '__main__':
