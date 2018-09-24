@@ -102,6 +102,6 @@ if __name__ == '__main__':
     #a = 1
     #b = 0
     INIT = np.matrix([[a*a,a*b],[b*a,b*b]])
-    #classical_circuit(INIT)
-    #circuit(INIT)
-    pick_pauli(np.kron(X,Y))
+    classical_circuit(INIT)
+    circuit(INIT)
+    #pick_pauli(np.kron(X,Y))
