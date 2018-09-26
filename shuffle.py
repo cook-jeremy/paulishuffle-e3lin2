@@ -11,8 +11,41 @@ paulis = [I,X,Y,Z]
 
 H = np.matrix('1 1; 1 -1')*(1/math.sqrt(2))
 
+# apply e^{i\beta X} to each qubit
+def apply_B(beta, states):
+    eiB = np.matrix([[math.cos(beta),complex(0,math.sin(beta))],[complex(0,math.sin(beta)),math.cos(beta)]])
+    result = [] 
+    for state in states[0]:
+        # apply the B operator locally
+        decomp = pick_pauli(eiB*state*np.conj(eiB))
+        result.append(decomp[0])
+        states[1] *= decomp[1]
+        states[2] *= decomp[2]
+    return [result, states[1], states[2]]
+
+# apply e^{i\gamma Z_a Z_b Z_c} to equation containing variables a,b,c
+def apply_C(gamma, states):
+    # restrict to only qubit 1,2,3 for now
+    result = []
+    local_state = kron(states[0])
+    eiC = np.asmatrix(expm(complex(0,1)*gamma*kron([Z,Z,Z])))
+    decomp = pick_pauli(eiC*local_state*np.conj(eiC))
+    states[1] *= decomp[1]
+    states[2] *= decomp[2]
+    return [decomp[0], states[1], states[2]]
+
+# create the C observable
+def create_C(would_be_set_of_equations):
+    # if the equation exists then add this
+    C = (1/2)*kron([Z,Z,Z])
+
+    # return the final observable
+    return C
+
 # take the kronecker (tensor) product of a list of len(m) matrices
 def kron(m):
+    if len(m) == 1:
+        return m
     total = np.kron(m[0], m[1])
     if len(m) > 2:
         for i in range(2, len(m)):
@@ -22,6 +55,7 @@ def kron(m):
 # decompose a 2^n x 2^n matrix into n-qubit tensor products of Pauli matrices
 def decompose(R):
     # take the cartesian product of the pauli matrices n times and tensor them together
+    R = np.asmatrix(R)
     dim = int(np.log2(R.shape[0]))
     cart_prod = itertools.product(paulis, repeat=dim)
     basis = []
@@ -41,6 +75,7 @@ def decompose(R):
 # from a state R, pick a pauli matrix from the probability distribution
 def pick_pauli(R):
     # decompose the matrix into sum of paulis and get dimension
+    R = np.asmatrix(R)
     consts = decompose(R)
     dim = int(np.log2(R.shape[0]))
 
@@ -55,7 +90,13 @@ def pick_pauli(R):
     # pick a random weight
     choice = np.random.choice(int(math.pow(4,dim)), p=weights)
 
-    # pick a pauli from the weights
+    # pick a pauli for each qubit from the weights
+    pauli_choices = []
+    for i in range(dim-1,-1,-1):
+        pos = int((choice/math.pow(4,i)) % 4)
+        pauli_choices.append(paulis[pos])
+
+    '''
     P_CHOICE = 0
     for i in range(0,dim):
         pos = int((choice/math.pow(4,i)) % 4)
@@ -63,8 +104,9 @@ def pick_pauli(R):
             P_CHOICE = paulis[pos]
         else:
             P_CHOICE = np.kron(paulis[pos],P_CHOICE)
+    '''
     
-    return [P_CHOICE, consts[choice], weights[choice]]
+    return [pauli_choices, consts[choice], weights[choice]]
 
 def classical_circuit(INIT):
     result = (Z*X*H*INIT*H*X).trace()
@@ -95,6 +137,33 @@ def circuit(INIT):
     avg = sum(results)/samples
     print(np.asscalar(avg))
 
+def e3lin2(input_equations):
+    # attempt to solve x_1 + x_2 + x_3 = 0
+    C = create_C(a)
+    rho = kron([0.5*(I+X),0.5*(I+X),0.5*(I+X)])
+    #print(rho)
+    
+    scale = 10
+    gamma = 0
+    beta = math.pi/4
+    for g in range(0,scale):
+        results = []
+        samples = 100
+        for i in range(0,samples):
+            # pick pauli, pass into B then C
+            init = pick_pauli(C)
+            op1 = apply_B(beta, init)
+            op2 = apply_C(gamma, op1)
+            
+            #print(kron(op2[0]))
+            p_hat = (op2[1]/op2[2])*(kron(op2[0])*rho).trace()
+            results.append(p_hat)
+
+        avg = sum(results)/samples
+        expectation = np.real(np.asscalar(avg))
+        print('gamma = %.2f, beta = %.2f, <C> = %.4f' % (gamma, beta, expectation))
+        gamma += 2*math.pi/scale
+
 if __name__ == '__main__':
     # input state is a\ket{0} + b\ket{1}
     a = 1/2
@@ -102,6 +171,10 @@ if __name__ == '__main__':
     #a = 1
     #b = 0
     INIT = np.matrix([[a*a,a*b],[b*a,b*b]])
-    classical_circuit(INIT)
-    circuit(INIT)
+    #classical_circuit(INIT)
+    #circuit(INIT)
     #pick_pauli(np.kron(X,Y))
+
+    input_equations = []
+    e3lin2(input_equations)
+
