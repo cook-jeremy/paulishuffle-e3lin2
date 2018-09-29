@@ -6,8 +6,7 @@ from scipy.linalg import expm
 I = np.matrix('1 0; 0 1')
 X = np.matrix('0 1; 1 0')
 Y = np.matrix('0 -1;1 0')*complex(0,1)
-Z = np.matrix('1 0; 0 -1')
-paulis = [I,X,Y,Z]
+Z = np.matrix('1 0; 0 -1') paulis = [I,X,Y,Z]
 
 H = np.matrix('1 1; 1 -1')*(1/math.sqrt(2))
 
@@ -96,16 +95,6 @@ def pick_pauli(R):
         pos = int((choice/math.pow(4,i)) % 4)
         pauli_choices.append(paulis[pos])
 
-    '''
-    P_CHOICE = 0
-    for i in range(0,dim):
-        pos = int((choice/math.pow(4,i)) % 4)
-        if i == 0:
-            P_CHOICE = paulis[pos]
-        else:
-            P_CHOICE = np.kron(paulis[pos],P_CHOICE)
-    '''
-    
     return [pauli_choices, consts[choice], weights[choice]]
 
 def classical_circuit(INIT):
@@ -177,4 +166,3 @@ if __name__ == '__main__':
 
     input_equations = []
     e3lin2(input_equations)
-
