@@ -10,6 +10,8 @@ Y = np.matrix('0 -1;1 0')*complex(0,1)
 Z = np.matrix('1 0; 0 -1')
 paulis = [I,X,Y,Z]
 
+f_results = []
+
 # apply e^{i\beta X} to each qubit
 def apply_B(beta, states):
     eiB = np.matrix([[math.cos(beta),complex(0,math.sin(beta))],[complex(0,math.sin(beta)),math.cos(beta)]])
@@ -112,7 +114,7 @@ def pick_pauli(R):
     return [pauli_choices, consts[choice], weights[choice]]
 
 # where the magic happens
-def e3lin2(num_vars, input_equations):
+def e3lin2(num_vars, num_samples, input_equations):
     # create the observable C
     C = create_C(num_vars, input_equations)
 
@@ -120,13 +122,12 @@ def e3lin2(num_vars, input_equations):
     input_state = [0.5*(I+X)]*num_vars
     rho = kron(input_state)
     
-    scale = 100
+    scale = 10
     gamma = 0
     beta = math.pi/4
     for g in range(0,scale):
         results = []
-        samples = 10
-        for i in range(0,samples):
+        for i in range(0, num_samples):
             # pick pauli, pass into B then C
             init = pick_pauli(C)
             op1 = apply_B(beta, init)
@@ -136,15 +137,27 @@ def e3lin2(num_vars, input_equations):
             p_hat = (op2[1]/op2[2])*(kron(op2[0])*rho).trace()
             results.append(p_hat)
 
-        avg = sum(results)/samples
+        avg = sum(results) / num_samples
         expectation = np.real(np.asscalar(avg))
         print('gamma = %.2f, beta = %.2f, <C> = %.4f' % (gamma, beta, expectation))
+        f_results.append([gamma, beta, expectation])
         gamma += 2*math.pi/scale
 
 if __name__ == '__main__':
     num_vars = 5
     d_constraint = 5
     num_eqns = 7
-    input_equations = gen_equations.create_eqn_list(num_vars,d_constraint,num_eqns)
-    print('equations: [var1, var2, var3, sol]:\n' + str(input_equations))
-    e3lin2(num_vars, input_equations)
+    num_samples = 10
+    input_equations = gen_equations.create_eqn_list(num_vars, d_constraint, num_eqns)
+    f_results.append([num_vars, d_constraint, num_eqns, num_samples])
+    f_results.append(input_equations)
+    print('num_vars: %d, d_constraint: %d, num_eqns: %d, num_samples: %d' % (num_vars, d_constraint, num_eqns, num_samples))
+    print('equations: ' + str(input_equations))
+    e3lin2(num_vars, num_samples, input_equations)
+    print(f_results)
+
+
+
+
+
+
