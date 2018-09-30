@@ -5,7 +5,7 @@ from scipy.linalg import expm
 import gen_equations
 import datetime
 import os
-
+import pickle
 
 I = np.matrix('1 0; 0 1')
 X = np.matrix('0 1; 1 0')
@@ -30,13 +30,15 @@ def apply_B(beta, states):
 
 # apply e^{i\gamma Z_a Z_b Z_c} to equation containing variables a,b,c
 def apply_C(num_vars, equations, gamma, states):
-    eiC = np.asmatrix(expm(complex(0,1)*gamma*kron([Z,Z,Z])))
     for i in range(0, len(equations)):
         index0 = equations[i][0]
         index1 = equations[i][1]
         index2 = equations[i][2]
+        solution = equations[i][3]
+        dabc = 1 - 2*solution # 0 --> 1 and 1 --> -1
         local_state = [states[0][index0], states[0][index1], states[0][index2]]
         local_state = kron(local_state)
+        eiC = np.asmatrix(expm(complex(0,1)*gamma*dabc*kron([Z,Z,Z])))
         decomp = pick_pauli(eiC*local_state*np.conj(eiC))
         states[1] *= decomp[1]
         states[2] *= decomp[2]
@@ -51,10 +53,11 @@ def create_C(num_vars, equations):
     C = 0
     for i in range(0, len(equations)):
         local_list = [I]*num_vars
-        #print('local_list = ' + str(local_list))
+        solution = equations[i][3]
+        dabc = 1 - 2*solution # 0 --> 1 and 1 --> -1
         for j in range(0,3):
             local_list[equations[i][j]] = Z
-        L = kron(local_list)
+        L = dabc*kron(local_list)
         C += L
 
     C = (1/2)*C
@@ -126,7 +129,11 @@ def e3lin2(num_vars, num_samples, input_equations):
     input_state = [0.5*(I+X)]*num_vars
     rho = kron(input_state)
     
-    scale = 10
+    gammas = []
+    betas = []
+    expectations = []
+
+    scale = 50
     gamma = 0
     beta = math.pi/4
     for g in range(0,scale):
@@ -144,17 +151,21 @@ def e3lin2(num_vars, num_samples, input_equations):
         avg = sum(results) / num_samples
         expectation = np.real(np.asscalar(avg))
         print('gamma = %.2f, beta = %.2f, <C> = %.4f' % (gamma, beta, expectation))
-        f_results.append([gamma, beta, expectation])
-        gamma += 2*math.pi/scale
+        gammas.append(gamma)
+        betas.append(beta)
+        expectations.append(expectation)
+        gamma += math.pi/scale
+
+    f_results.append([gammas, betas, expectations])
 
 if __name__ == '__main__':
-    num_vars = 5
+    num_vars = 4
     d_constraint = 5
-    num_eqns = 7
-    num_samples = 2
+    num_eqns = 5
+    num_samples = 50
     input_equations = gen_equations.create_eqn_list(num_vars, d_constraint, num_eqns)
-    #f_results.append([num_vars, d_constraint, num_eqns, num_samples])
-    #f_results.append(input_equations)
+    f_results.append([num_vars, d_constraint, num_eqns, num_samples])
+    f_results.append(input_equations)
     print('num_vars: %d, d_constraint: %d, num_eqns: %d, num_samples: %d' % (num_vars, d_constraint, num_eqns, num_samples))
     print('equations: ' + str(input_equations))
     e3lin2(num_vars, num_samples, input_equations)
@@ -166,15 +177,7 @@ if __name__ == '__main__':
     directory = 'results/' + str(now.strftime('%m-%d-%Y')) + '/'
     if not os.path.exists(directory):
             os.makedirs(directory)
-    filename = directory + str(now.strftime('%H:%M:%S%p')) + '.txt'
-    with open(filename, 'w') as f:
-        f.write('%d, %d, %d, %d\n\n' % (num_vars, d_constraint, num_eqns, num_samples))
-        if dbg: print('%d, %d, %d, %d\n' % (num_vars, d_constraint, num_eqns, num_samples))
-        for eqn in input_equations:
-            f.write('%s\n' % str(eqn)[1:-1])
-            if dbg: print('%s' % str(eqn)[1:-1])
-        f.write('\n')
-        if dbg: print('')
-        for res in f_results:
-            f.write("%s\n" % str(res)[1:-1])
-            if dbg: print("%s" % str(res)[1:-1])
+    filename = directory + str(now.strftime('%H:%M:%S%p'))
+
+    with open(filename, 'wb') as fp:
+        pickle.dump(f_results, fp)
