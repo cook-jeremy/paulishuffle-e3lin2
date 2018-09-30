@@ -14,14 +14,18 @@ def init_eqn_select(n, d, d_constraint):
 
     # create a list with all variables that haven't been used yet
     if not all_vars:
-        while len(eqn_select) < 3:
-            flag = False
-            add = random.randint(0,n-1)
+        if len(eqn_select) < 3:
+            to_pick = []
+            for i in range (0,n):
+                to_pick.append(i)
+            
             for i in range(0,len(eqn_select)):
-                if eqn_select[i] == add:
-                    flag = True
-            if not flag:
-                eqn_select.append(add)
+                to_pick.remove(eqn_select[i])
+            
+            while len(eqn_select) < 3:
+                to_add = to_pick[random.randint(0,len(to_pick)-1)]
+                eqn_select.append(to_add)
+                to_pick.remove(to_add)
     else: 
         for i in range(0,n):
             # if we haven't used d of this variable, add it to the list of potential eqns to be picked
@@ -35,6 +39,10 @@ def create_eqn_list(n, d, f):
 
     if f < n/3:
         print('ERROR too few equations to use all variables!')
+        sys.exit(1)
+
+    if 3*f > n*d:
+        print('ERROR too many constraints, or too few equations, or too few variables')
         sys.exit(1)
 
     # only make f - 1 equations for degeneracy later

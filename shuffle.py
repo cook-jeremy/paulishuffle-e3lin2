@@ -120,12 +120,12 @@ def e3lin2(num_vars, input_equations):
     input_state = [0.5*(I+X)]*num_vars
     rho = kron(input_state)
     
-    scale = 10
+    scale = 100
     gamma = 0
     beta = math.pi/4
     for g in range(0,scale):
         results = []
-        samples = 100
+        samples = 10
         for i in range(0,samples):
             # pick pauli, pass into B then C
             init = pick_pauli(C)
@@ -142,9 +142,9 @@ def e3lin2(num_vars, input_equations):
         gamma += 2*math.pi/scale
 
 if __name__ == '__main__':
-    num_vars = 4
-    d_constraint = 2
-    num_eqns = 2
+    num_vars = 5
+    d_constraint = 5
+    num_eqns = 7
     input_equations = gen_equations.create_eqn_list(num_vars,d_constraint,num_eqns)
     print('equations: [var1, var2, var3, sol]:\n' + str(input_equations))
     e3lin2(num_vars, input_equations)
