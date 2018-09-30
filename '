@@ -10,6 +10,8 @@ Y = np.matrix('0 -1;1 0')*complex(0,1)
 Z = np.matrix('1 0; 0 -1')
 paulis = [I,X,Y,Z]
 
+H = np.matrix('1 1; 1 -1')*(1/math.sqrt(2))
+
 # apply e^{i\beta X} to each qubit
 def apply_B(beta, states):
     eiB = np.matrix([[math.cos(beta),complex(0,math.sin(beta))],[complex(0,math.sin(beta)),math.cos(beta)]])
@@ -17,41 +19,30 @@ def apply_B(beta, states):
     for state in states[0]:
         # apply the B operator locally
         decomp = pick_pauli(eiB*state*np.conj(eiB))
-        result.append(decomp[0][0])
+        result.append(decomp[0])
         states[1] *= decomp[1]
         states[2] *= decomp[2]
     return [result, states[1], states[2]]
 
 # apply e^{i\gamma Z_a Z_b Z_c} to equation containing variables a,b,c
-def apply_C(num_vars, equations, gamma, states):
+def apply_C(gamma, states):
+    # restrict to only qubit 1,2,3 for now
+    result = []
+    local_state = kron(states[0])
     eiC = np.asmatrix(expm(complex(0,1)*gamma*kron([Z,Z,Z])))
-    for i in range(0, len(equations)):
-        index0 = equations[i][0]
-        index1 = equations[i][1]
-        index2 = equations[i][2]
-        local_state = [states[0][index0], states[0][index1], states[0][index2]]
-        local_state = kron(local_state)
-        decomp = pick_pauli(eiC*local_state*np.conj(eiC))
-        states[1] *= decomp[1]
-        states[2] *= decomp[2]
-        states[0][index0] = decomp[0][0]
-        states[0][index1] = decomp[0][1]
-        states[0][index2] = decomp[0][2]
-    return states
+    decomp = pick_pauli(eiC*local_state*np.conj(eiC))
+    states[1] *= decomp[1]
+    states[2] *= decomp[2]
+    return [decomp[0], states[1], states[2]]
 
 # create the C observable
-def create_C(num_vars, equations):
-    # if the equation x_a + x_b + x_c exists then add Z_a * Z_b * Z_c to our observable
-    C = 0
-    for i in range(0, len(equations)):
-        local_list = [I]*num_vars
-        #print('local_list = ' + str(local_list))
-        for j in range(0,3):
-            local_list[equations[i][j]] = Z
-        L = kron(local_list)
-        C += L
+def create_C(equations):
+    # if the equation exists then add this
+    n = len(equations)
+    for i in range(0,len(equations)):
+        local_list = []*
+    C = (1/2)*kron([Z,Z,Z])
 
-    C = (1/2)*C
     # return the final observable
     return C
 
@@ -111,14 +102,40 @@ def pick_pauli(R):
 
     return [pauli_choices, consts[choice], weights[choice]]
 
-# where the magic happens
-def e3lin2(num_vars, input_equations):
-    # create the observable C
-    C = create_C(num_vars, input_equations)
+def classical_circuit(INIT):
+    result = (Z*X*H*INIT*H*X).trace()
+    print(result)
 
-    # create our input state |+>|+>...|+>
-    input_state = [0.5*(I+X)]*num_vars
-    rho = kron(input_state)
+def circuit(INIT):
+    results = []
+    samples = 10000
+    for i in range(0,samples):
+        # pick a pauli for INIT
+        r1 = pick_pauli(INIT)
+        STATE = r1[0]
+
+        STATE = H*STATE*H
+        r2 = pick_pauli(STATE)
+        STATE = r2[0]
+
+        STATE = X*STATE*X
+        r3 = pick_pauli(STATE)
+        STATE = r3[0]
+        
+        rf = r1[1]*r2[1]*r3[1]
+        pf = r1[2]*r2[2]*r3[2]
+        
+        p_hat = (rf/pf)*(STATE*Z).trace()
+        results.append(p_hat)
+
+    avg = sum(results)/samples
+    print(np.asscalar(avg))
+
+def e3lin2(input_equations):
+    # attempt to solve x_1 + x_2 + x_3 = 0
+    C = create_C(input_equations)
+    rho = kron([0.5*(I+X),0.5*(I+X),0.5*(I+X)])
+    #print(rho)
     
     scale = 10
     gamma = 0
@@ -130,7 +147,7 @@ def e3lin2(num_vars, input_equations):
             # pick pauli, pass into B then C
             init = pick_pauli(C)
             op1 = apply_B(beta, init)
-            op2 = apply_C(num_vars, input_equations, gamma, op1)
+            op2 = apply_C(gamma, op1)
             
             #print(kron(op2[0]))
             p_hat = (op2[1]/op2[2])*(kron(op2[0])*rho).trace()
@@ -142,9 +159,16 @@ def e3lin2(num_vars, input_equations):
         gamma += 2*math.pi/scale
 
 if __name__ == '__main__':
-    num_vars = 4
-    d_constraint = 2
-    num_eqns = 2
-    input_equations = gen_equations.create_eqn_list(num_vars,d_constraint,num_eqns)
+    # input state is a\ket{0} + b\ket{1}
+    a = 1/2
+    b = math.sqrt(3)/2
+    #a = 1
+    #b = 0
+    INIT = np.matrix([[a*a,a*b],[b*a,b*b]])
+    #classical_circuit(INIT)
+    #circuit(INIT)
+    #pick_pauli(np.kron(X,Y))
+
+    input_equations = gen_equations.create_eqn_list(3,1,1)
     print('equations: [var1, var2, var3, sol]:\n' + str(input_equations))
-    e3lin2(num_vars, input_equations)
+    e3lin2(input_equations)
