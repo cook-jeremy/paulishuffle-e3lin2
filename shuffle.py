@@ -2,11 +2,13 @@ import numpy as np
 import math
 import itertools
 from scipy.linalg import expm
+import gen_equations
 
 I = np.matrix('1 0; 0 1')
 X = np.matrix('0 1; 1 0')
 Y = np.matrix('0 -1;1 0')*complex(0,1)
-Z = np.matrix('1 0; 0 -1') paulis = [I,X,Y,Z]
+Z = np.matrix('1 0; 0 -1')
+paulis = [I,X,Y,Z]
 
 H = np.matrix('1 1; 1 -1')*(1/math.sqrt(2))
 
@@ -26,6 +28,9 @@ def apply_B(beta, states):
 def apply_C(gamma, states):
     # restrict to only qubit 1,2,3 for now
     result = []
+
+
+
     local_state = kron(states[0])
     eiC = np.asmatrix(expm(complex(0,1)*gamma*kron([Z,Z,Z])))
     decomp = pick_pauli(eiC*local_state*np.conj(eiC))
@@ -34,10 +39,18 @@ def apply_C(gamma, states):
     return [decomp[0], states[1], states[2]]
 
 # create the C observable
-def create_C(would_be_set_of_equations):
-    # if the equation exists then add this
-    C = (1/2)*kron([Z,Z,Z])
+def create_C(num_vars, equations):
+    # if the equation x_a + x_b + x_c exists then add Z_a * Z_b * Z_c to our observable
+    C = 0
+    for i in range(0, len(equations)):
+        local_list = [I]*num_vars
+        print('local_list = ' + str(local_list))
+        for j in range(0,3):
+            local_list[equations[i][j]] = Z
+        L = kron(local_list)
+        C += L
 
+    C = (1/2)*C
     # return the final observable
     return C
 
@@ -126,11 +139,13 @@ def circuit(INIT):
     avg = sum(results)/samples
     print(np.asscalar(avg))
 
-def e3lin2(input_equations):
-    # attempt to solve x_1 + x_2 + x_3 = 0
-    C = create_C(a)
-    rho = kron([0.5*(I+X),0.5*(I+X),0.5*(I+X)])
-    #print(rho)
+def e3lin2(num_vars, input_equations):
+    # create the observable C
+    C = create_C(num_vars, input_equations)
+
+    # create our input state |+>|+>...|+>
+    input_state = [0.5*(I+X)]*num_vars
+    rho = kron(input_state)
     
     scale = 10
     gamma = 0
@@ -163,6 +178,9 @@ if __name__ == '__main__':
     #classical_circuit(INIT)
     #circuit(INIT)
     #pick_pauli(np.kron(X,Y))
-
-    input_equations = []
-    e3lin2(input_equations)
+    num_vars = 4
+    d_constraint = 2
+    num_eqns = 2
+    input_equations = gen_equations.create_eqn_list(num_vars,d_constraint,num_eqns)
+    print('equations: [var1, var2, var3, sol]:\n' + str(input_equations))
+    e3lin2(num_vars, input_equations)
