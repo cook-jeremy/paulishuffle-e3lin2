@@ -3,6 +3,9 @@ import math
 import itertools
 from scipy.linalg import expm
 import gen_equations
+import datetime
+import os
+
 
 I = np.matrix('1 0; 0 1')
 X = np.matrix('0 1; 1 0')
@@ -11,6 +14,7 @@ Z = np.matrix('1 0; 0 -1')
 paulis = [I,X,Y,Z]
 
 f_results = []
+dbg = 0
 
 # apply e^{i\beta X} to each qubit
 def apply_B(beta, states):
@@ -147,17 +151,30 @@ if __name__ == '__main__':
     num_vars = 5
     d_constraint = 5
     num_eqns = 7
-    num_samples = 10
+    num_samples = 2
     input_equations = gen_equations.create_eqn_list(num_vars, d_constraint, num_eqns)
-    f_results.append([num_vars, d_constraint, num_eqns, num_samples])
-    f_results.append(input_equations)
+    #f_results.append([num_vars, d_constraint, num_eqns, num_samples])
+    #f_results.append(input_equations)
     print('num_vars: %d, d_constraint: %d, num_eqns: %d, num_samples: %d' % (num_vars, d_constraint, num_eqns, num_samples))
     print('equations: ' + str(input_equations))
     e3lin2(num_vars, num_samples, input_equations)
-    print(f_results)
-
-
-
-
-
-
+    #print(f_results)
+    if dbg: print('')
+    
+    # print results to file
+    now = datetime.datetime.now()
+    directory = 'results/' + str(now.strftime('%m-%d-%Y')) + '/'
+    if not os.path.exists(directory):
+            os.makedirs(directory)
+    filename = directory + str(now.strftime('%H:%M:%S%p')) + '.txt'
+    with open(filename, 'w') as f:
+        f.write('%d, %d, %d, %d\n\n' % (num_vars, d_constraint, num_eqns, num_samples))
+        if dbg: print('%d, %d, %d, %d\n' % (num_vars, d_constraint, num_eqns, num_samples))
+        for eqn in input_equations:
+            f.write('%s\n' % str(eqn)[1:-1])
+            if dbg: print('%s' % str(eqn)[1:-1])
+        f.write('\n')
+        if dbg: print('')
+        for res in f_results:
+            f.write("%s\n" % str(res)[1:-1])
+            if dbg: print("%s" % str(res)[1:-1])
