@@ -13,7 +13,7 @@ def loadfile(filename):
 def graph(info, data):
     if dbg: print(data)
     plt.plot(data[0], data[2])
-    plt.title('beta = %.2f, num_vars = %d, d = %d, num_eqns = %d' % (data[1][0], info[0], info[1], info[2]))
+    plt.title('beta = %.2f, num_vars = %d, d = %d, num_eqns = %d, num_samples = %d' % (data[1][0], info[0], info[1], info[2], info[3]))
     plt.ylabel('<C>')
     plt.xlabel('gamma')
     plt.show()
