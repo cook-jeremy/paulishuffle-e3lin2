@@ -7,7 +7,7 @@ import datetime
 import os
 import pickle
 
-I = np.matrix('1 0; 0 1')
+I = np.matrix('1 0; 0 1') 
 X = np.matrix('0 1; 1 0')
 Y = np.matrix('0 -1;1 0')*complex(0,1)
 Z = np.matrix('1 0; 0 -1')
@@ -133,7 +133,7 @@ def e3lin2(num_vars, num_samples, input_equations):
     betas = []
     expectations = []
 
-    scale = 50
+    scale = 100
     gamma = 0
     beta = math.pi/4
     for g in range(0,scale):
@@ -159,10 +159,10 @@ def e3lin2(num_vars, num_samples, input_equations):
     f_results.append([gammas, betas, expectations])
 
 if __name__ == '__main__':
-    num_vars = 4
-    d_constraint = 5
-    num_eqns = 5
-    num_samples = 50
+    num_vars = 5
+    d_constraint = 50
+    num_eqns = 10
+    num_samples = 100
     input_equations = gen_equations.create_eqn_list(num_vars, d_constraint, num_eqns)
     f_results.append([num_vars, d_constraint, num_eqns, num_samples])
     f_results.append(input_equations)

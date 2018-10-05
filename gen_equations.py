@@ -1,99 +1,99 @@
 import random
 import sys
+import numpy as np
+
+dbg = 1
+
+def fully_connected(eqns):
+    # given a set of eqns, ensure the graph where nodes are variables and edges are equations is fully connected
+    return True
+
+def contains_all_vars(EQNS):
+    # check if all columns have at least one 1 in them
+    num_rows = EQNS.shape[0]
+    num_cols = EQNS.shape[1]
+
+    for j in range(0, num_cols):
+        flag = False
+        for i in range(0, num_rows):
+            if EQNS[i, j] == 1:
+                flag = True
+        if not flag:
+            # found a column without a 1 in it
+            return False
+
+    # otherwise
+    return True
 
 def init_eqn_select(n, d, d_constraint):
-    # init random equation selecter
+    # given how many times a variable has already shown up (d_constraint), return list of useable variables
     eqn_select = []
-
-    all_vars = True
     for i in range(0,n):
-        # haven't used all variables yet
-        if d_constraint[i] == 0:
-            all_vars = False
+        # if we haven't used d of this variable, add it to the list of potential eqns to be picked
+        if d_constraint[i] < d:
             eqn_select.append(i)
-
-    # create a list with all variables that haven't been used yet
-    if not all_vars:
-        if len(eqn_select) < 3:
-            to_pick = []
-            for i in range (0,n):
-                to_pick.append(i)
-            
-            for i in range(0,len(eqn_select)):
-                to_pick.remove(eqn_select[i])
-            
-            while len(eqn_select) < 3:
-                to_add = to_pick[random.randint(0,len(to_pick)-1)]
-                eqn_select.append(to_add)
-                to_pick.remove(to_add)
-    else: 
-        for i in range(0,n):
-            # if we haven't used d of this variable, add it to the list of potential eqns to be picked
-            if d_constraint[i] < d:
-                eqn_select.append(i)
     return eqn_select
 
-# given n (num of vars), d (max eqs for a single var), g (num of equations), create a system of linear equations that uses exactly n vars in g eqns with NO exact solutions
-def create_eqn_list(n, d, f):
-    equations = []
+def gen_eqns(n, d, f):
+    satisfied = False
+    while not satisfied:
+        # create A and b in Ax = b
+        sys = create_eqns(n, d, f)
+        
+        # check if we have used all variables
+        if not contains_all_vars(sys[0]):
+            continue
+
+        # check if we are fully connected
+        if not fully_connected(sys[0]):
+            continue
+
+        # check if we have determinant 0
+        # row reduce and check if system is solvable
+        return sys
+        
+
+def create_eqns(n, d, f):
+    EQNS = np.asmatrix(np.zeros((f, n)))
+    SOLS = np.asmatrix(np.zeros((f, 1)))
 
     if f < n/3:
-        print('ERROR too few equations to use all variables!')
+        print('ERROR(gen_equations): too few equations to use all variables!')
         sys.exit(1)
 
     if 3*f > n*d:
-        print('ERROR too many constraints, or too few equations, or too few variables')
+        print('ERROR(gen_equations): 3f <= nd')
         sys.exit(1)
 
-    # only make f - 1 equations for degeneracy later
-    '''
-    f = 1
-    if g > 1:
-        f = g - 1
-    '''
-
     d_constraint = [0]*n
-    #print('d_constra = ' + str(d_constraint) + '\n')
 
     # loop over equations left to create 
     while f > 0:
-        # create init eqn selecter [1,2,...,n]
+        # get variables to be used [1,2,...,n]
         eqn_select = init_eqn_select(n, d, d_constraint)
         if(len(eqn_select) < 3): 
-            print('ERROR too many constraints (d is too small)')
+            print('ERROR(gen_equations): too many constraints (d is too small)')
             print('d_constraint = ' + str(d_constraint))
             sys.exit(1)
 
-        #print('eqn start = ' + str(eqn_select))
-        local_eqn = []
-
         for i in range(0,3):
+            # pick a random variable
             s = random.randint(0,len(eqn_select)-1)
             var = eqn_select[s]
-            local_eqn.append(var)
+
+            # add to matrix
+            EQNS[f-1, var] = 1
             d_constraint[var] += 1
             eqn_select.remove(var)
 
-        local_eqn.sort()
         # pick solution
-        local_eqn.append(random.randint(0,1))
-
-        #print('local_eqn = ' + str(local_eqn))
-        #print('d_constra = ' + str(d_constraint))
-        #print('')
-        equations.append(local_eqn)
+        SOLS[f-1, 0] = random.randint(0,1)
         f = f - 1
 
     # make the equation set degenerate so we dont have exact solutions (is there a better way to do this?)
-    '''
-    if g > 1:
-        opposite = 0
-        if equations[0][3] == 0:
-            opposite = 1
-        degen_eqn = [equations[0][0],equations[0][1],equations[0][2],opposite]
-        equations.append(degen_eqn)
-    '''
-    return equations
+    return [EQNS, SOLS]
 
 if __name__ == '__main__':
-    print(create_eqn_list(9, 11, 30))
+    ret = gen_eqns(6, 10, 10)
+    print(ret[0])
+    print(ret[1])
