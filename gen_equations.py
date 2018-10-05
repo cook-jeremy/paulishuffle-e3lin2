@@ -4,9 +4,50 @@ import numpy as np
 
 dbg = 1
 
-def fully_connected(eqns):
+def fully_connected(EQNS):
     # given a set of eqns, ensure the graph where nodes are variables and edges are equations is fully connected
-    return True
+    num_rows = EQNS.shape[0]
+    num_cols = EQNS.shape[1]
+
+    # get first row variables
+    pot_vars = [] # variables still needed to search
+    seen_vars = [] # variables where we found all their equations
+    for j in range(0, num_cols):
+        if EQNS[0, j] == 1:
+            pot_vars.append(j)     
+
+    # while pot_vars is not empty and size of seen_vars is < n
+    flag = True
+    while flag:
+        var = pot_vars[0]
+        seen_vars.append(var)
+        pot_vars.remove(var)
+
+        for i in range(0, num_rows):
+            if EQNS[i, var] == 1:
+                for j in range(0, num_cols):
+                    if EQNS[i, j] == 1 and j != var:
+                        pot_vars.append(j)
+
+        # remove duplicates 
+        pot_vars = list(set(pot_vars))
+        # remove those already in seen_vars
+        for elem in seen_vars:
+            if elem in pot_vars:
+                pot_vars.remove(elem)
+        # look at all variables that are connected by some equation
+        merged_list = pot_vars + seen_vars
+
+        if len(pot_vars) > 0 and len(merged_list) < num_cols:
+            # not done yet searching
+            continue
+        elif len(merged_list) == num_cols:
+            # fully connected because we've seen every variable
+            return True
+        elif len(pot_vars) == 0:
+            # seen_vars is not full and we are out of things to search, so not connected
+            flag = False
+    return False
 
 def contains_all_vars(EQNS):
     # check if all columns have at least one 1 in them
@@ -36,20 +77,26 @@ def init_eqn_select(n, d, d_constraint):
 
 def gen_eqns(n, d, f):
     satisfied = False
+    num_failures = 0
     while not satisfied:
         # create A and b in Ax = b
         sys = create_eqns(n, d, f)
         
         # check if we have used all variables
         if not contains_all_vars(sys[0]):
+            #print('doesn\'t contain all variables, trying again...')
+            num_failures += 1
             continue
 
         # check if we are fully connected
         if not fully_connected(sys[0]):
+            #print('ins\'t fully connected, trying again...')
+            num_failures += 1
             continue
 
         # check if we have determinant 0
         # row reduce and check if system is solvable
+        print('num failures: %s' % num_failures)
         return sys
         
 
@@ -63,6 +110,10 @@ def create_eqns(n, d, f):
 
     if 3*f > n*d:
         print('ERROR(gen_equations): 3f <= nd')
+        sys.exit(1)
+    
+    if f <= n/3:
+        print('ERROR(gen_equations): not enough equations to have fully connected graph')
         sys.exit(1)
 
     d_constraint = [0]*n
@@ -94,6 +145,6 @@ def create_eqns(n, d, f):
     return [EQNS, SOLS]
 
 if __name__ == '__main__':
-    ret = gen_eqns(6, 10, 10)
+    ret = gen_eqns(9, 100, 4)
     print(ret[0])
     print(ret[1])
