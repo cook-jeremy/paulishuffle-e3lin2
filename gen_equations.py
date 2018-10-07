@@ -94,11 +94,11 @@ def gen_eqns(n, d, f):
             num_failures += 1
             continue
 
-        # check if we have determinant 0
         # row reduce and check if system is solvable
-        print('num failures: %s' % num_failures)
-        return sys
-        
+        break
+
+    print('num failures: %s' % num_failures)
+    return sys
 
 def create_eqns(n, d, f):
     EQNS = np.asmatrix(np.zeros((f, n)))

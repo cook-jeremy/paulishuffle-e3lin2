@@ -121,9 +121,9 @@ def pick_pauli(R):
     return [pauli_choices, consts[choice], weights[choice]]
 
 # where the magic happens
-def e3lin2(num_vars, num_samples, input_equations):
+def e3lin2(num_vars, num_samples, num_steps, input_eqns):
     # create the observable C
-    C = create_C(num_vars, input_equations)
+    C = create_C(num_vars, input_eqns)
 
     # create our input state |+>|+>...|+>
     input_state = [0.5*(I+X)]*num_vars
@@ -133,16 +133,15 @@ def e3lin2(num_vars, num_samples, input_equations):
     betas = []
     expectations = []
 
-    scale = 100
     gamma = 0
     beta = math.pi/4
-    for g in range(0,scale):
+    for g in range(0, num_steps):
         results = []
         for i in range(0, num_samples):
             # pick pauli, pass into B then C
             init = pick_pauli(C)
             op1 = apply_B(beta, init)
-            op2 = apply_C(num_vars, input_equations, gamma, op1)
+            op2 = apply_C(num_vars, input_eqns, gamma, op1)
             
             #print(kron(op2[0]))
             p_hat = (op2[1]/op2[2])*(kron(op2[0])*rho).trace()
@@ -154,23 +153,43 @@ def e3lin2(num_vars, num_samples, input_equations):
         gammas.append(gamma)
         betas.append(beta)
         expectations.append(expectation)
-        gamma += math.pi/scale
+        gamma += math.pi/num_steps
 
     f_results.append([gammas, betas, expectations])
+
+def convert_eqns(input_eqns):
+    EQNS = input_eqns[0]
+    b = input_eqns[1]
+    num_rows = EQNS.shape[0]
+    num_cols = EQNS.shape[1]
+    eqn_list = []
+    for i in range(0, num_rows):
+        eqn = []
+        for j in range(0, num_cols):
+            if EQNS[i, j] == 1:
+                eqn.append(j)
+        eqn.append(int(np.asscalar(b[i])))
+        eqn_list.append(eqn)
+    return eqn_list
+
 
 if __name__ == '__main__':
     num_vars = 5
     d_constraint = 50
-    num_eqns = 10
+    num_eqns = 6
     num_samples = 100
-    input_equations = gen_equations.create_eqn_list(num_vars, d_constraint, num_eqns)
+    num_steps = 100
+
+    # get input matrix and result, Ax = b
+    input_eqns = gen_equations.gen_eqns(num_vars, d_constraint, num_eqns)
     f_results.append([num_vars, d_constraint, num_eqns, num_samples])
-    f_results.append(input_equations)
+    f_results.append(input_eqns)
     print('num_vars: %d, d_constraint: %d, num_eqns: %d, num_samples: %d' % (num_vars, d_constraint, num_eqns, num_samples))
-    print('equations: ' + str(input_equations))
-    e3lin2(num_vars, num_samples, input_equations)
-    #print(f_results)
-    if dbg: print('')
+    #print('equations: \n %s x = %s' % (str(input_eqns[0]), str(input_eqns[1])))
+    print(np.c_[input_eqns[0], input_eqns[1]])
+    # turn input eqns matrix into a list
+    input_eqns_list = convert_eqns(input_eqns)
+    e3lin2(num_vars, num_samples, num_steps, input_eqns_list)
     
     # print results to file
     now = datetime.datetime.now()
