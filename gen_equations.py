@@ -1,6 +1,7 @@
 import random
 import sys
 import numpy as np
+from numpy.linalg import matrix_rank
 
 dbg = 1
 
@@ -66,6 +67,16 @@ def contains_all_vars(EQNS):
     # otherwise
     return True
 
+def solvable(EQNS, SOLS):
+    # check if the system is inconsistent via Rouché–Capelli theorem
+    AUGMENTED = np.concatenate((EQNS, SOLS), 1)
+    rank_AUG = matrix_rank(AUGMENTED)
+    rank_COEFF = matrix_rank(EQNS)
+    if rank_COEFF < rank_AUG:
+        return False
+    else:
+        return True
+
 def init_eqn_select(n, d, d_constraint):
     # given how many times a variable has already shown up (d_constraint), return list of useable variables
     eqn_select = []
@@ -95,6 +106,11 @@ def gen_eqns(n, d, f):
             continue
 
         # row reduce and check if system is solvable
+        if solvable(sys[0], sys[1]):
+            num_failures += 1
+            continue
+
+        # passed all conditions
         break
 
     print('num failures: %s' % num_failures)
@@ -145,6 +161,6 @@ def create_eqns(n, d, f):
     return [EQNS, SOLS]
 
 if __name__ == '__main__':
-    ret = gen_eqns(9, 100, 4)
+    ret = gen_eqns(9, 100, 9)
     print(ret[0])
     print(ret[1])
