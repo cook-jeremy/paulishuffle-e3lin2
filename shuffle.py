@@ -178,7 +178,7 @@ if __name__ == '__main__':
     d_constraint = 50
     num_eqns = 6
     num_samples = 100
-    num_steps = 100
+    num_steps = 20
 
     # get input matrix and result, Ax = b
     input_eqns = gen_equations.gen_eqns(num_vars, d_constraint, num_eqns)
