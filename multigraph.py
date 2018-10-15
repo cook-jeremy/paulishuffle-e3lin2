@@ -15,7 +15,8 @@ def get_error(n, delta, gammas):
     errors = []    
     for gam in gammas:
         D = math.fabs(math.cos(gam)) + math.fabs(math.sin(gam))
-        err = math.sqrt(4*D*D*math.log(2/delta)/(2*n))
+        #err = math.sqrt(4*D*D*math.log(2/delta)/(2*n))
+        err = math.sqrt(4*D*D*math.log(1/delta)/(1*n))
         errors.append(err)
     return errors
     
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     info = total_list[0][0]
     eqns = total_list[0][1]
     data = []
-    for i in range(0, len(total_list)):
+    for i in range(0, 2):# len(total_list)):
         data.append(total_list[i][2])
     print(eqns)
     graph(info, data)

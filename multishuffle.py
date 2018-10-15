@@ -38,7 +38,7 @@ def apply_C(num_vars, equations, gamma, states):
         dabc = 1 - 2*solution # 0 --> 1 and 1 --> -1
         local_state = [states[0][index0], states[0][index1], states[0][index2]]
         local_state = kron(local_state)
-        eiC = np.asmatrix(expm(complex(0,1)*gamma*dabc*kron([Z,Z,Z])))
+        eiC = np.asmatrix(expm(complex(0,1)*gamma*0.5*dabc*kron([Z,Z,Z])))
         decomp = pick_pauli(eiC*local_state*np.conj(eiC))
         states[1] *= decomp[1]
         states[2] *= decomp[2]

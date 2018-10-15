@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import random
 import itertools
 from scipy.linalg import expm
 import gen_equations
@@ -14,37 +15,49 @@ Z = np.matrix('1 0; 0 -1')
 paulis = [I,X,Y,Z]
 
 f_results = []
+basis_dict = {}
 dbg = 0
 
 # apply e^{i\beta X} to each qubit
-def apply_B(beta, states):
+def apply_B(states, beta):
     eiB = np.matrix([[math.cos(beta),complex(0,math.sin(beta))],[complex(0,math.sin(beta)),math.cos(beta)]])
     result = [] 
     for state in states[0]:
         # apply the B operator locally
         decomp = pick_pauli(eiB*state*np.conj(eiB))
         result.append(decomp[0][0])
-        states[1] *= decomp[1]
-        states[2] *= decomp[2]
+        states[1] *= decomp[1] # bloch vector component
+        states[2] *= decomp[2] # probability component
     return [result, states[1], states[2]]
 
 # apply e^{i\gamma Z_a Z_b Z_c} to equation containing variables a,b,c
-def apply_C(num_vars, equations, gamma, states):
+def apply_C(states, equations, gamma, noise_p):
+    # with probability noise_p we switch our state with identity, otherwise apply C
     for i in range(0, len(equations)):
         index0 = equations[i][0]
         index1 = equations[i][1]
         index2 = equations[i][2]
-        solution = equations[i][3]
-        dabc = 1 - 2*solution # 0 --> 1 and 1 --> -1
-        local_state = [states[0][index0], states[0][index1], states[0][index2]]
-        local_state = kron(local_state)
-        eiC = np.asmatrix(expm(complex(0,1)*0.5*gamma*dabc*kron([Z,Z,Z])))
-        decomp = pick_pauli(eiC*local_state*np.conj(eiC))
-        states[1] *= decomp[1]
-        states[2] *= decomp[2]
-        states[0][index0] = decomp[0][0]
-        states[0][index1] = decomp[0][1]
-        states[0][index2] = decomp[0][2]
+
+        # Depolarizing noise
+        if random.random() < noise_p:
+            # switch our state with I/2 \otimes I/2 \otimes I/2
+            states[0][index0] = I
+            states[0][index1] = I
+            states[0][index2] = I
+            states[1] *= 1/8
+        else:
+            # otherwise apply C as if nothing happened
+            solution = equations[i][3]
+            dabc = 1 - 2*solution # 0 --> 1 and 1 --> -1
+            local_state = [states[0][index0], states[0][index1], states[0][index2]]
+            local_state = kron(local_state)
+            eiC = np.asmatrix(expm(np.complex(0,1)*0.5*gamma*dabc*kron([Z,Z,Z])))
+            decomp = pick_pauli(eiC*local_state*np.conj(eiC))
+            states[1] *= decomp[1] # bloch vector component
+            states[2] *= decomp[2] # probability component
+            states[0][index0] = decomp[0][0]
+            states[0][index1] = decomp[0][1]
+            states[0][index2] = decomp[0][2]
     return states
 
 # create the C observable
@@ -57,8 +70,7 @@ def create_C(num_vars, equations):
         dabc = 1 - 2*solution # 0 --> 1 and 1 --> -1
         for j in range(0,3):
             local_list[equations[i][j]] = Z
-        L = dabc*kron(local_list)
-        C += L
+        C += dabc*kron(local_list)
 
     C = (1/2)*C
     # return the final observable
@@ -79,13 +91,21 @@ def decompose(R):
     # take the cartesian product of the pauli matrices n times and tensor them together
     R = np.asmatrix(R)
     dim = int(np.log2(R.shape[0]))
-    cart_prod = itertools.product(paulis, repeat=dim)
+
+    # check if we have the basis already made in dictionary
     basis = []
-    if dim > 1:
-        for prod in cart_prod:
-            basis.append(kron(prod))
-    else:
-        basis = paulis
+    if dim in basis_dict:
+        basis = basis_dict[dim]
+    else: 
+        cart_prod = itertools.product(paulis, repeat=dim)
+        if dim > 1:
+            for prod in cart_prod:
+                basis.append(kron(prod))
+        else:
+            basis = paulis
+
+        # add to dictionary for next time
+        basis_dict[dim] = basis
    
     # decompose matrix R into its components
     const = 1/(math.pow(2,dim))
@@ -121,7 +141,7 @@ def pick_pauli(R):
     return [pauli_choices, consts[choice], weights[choice]]
 
 # where the magic happens
-def e3lin2(num_vars, num_samples, num_steps, input_eqns):
+def e3lin2(num_vars, num_samples, num_steps, noise_p, input_eqns):
     # create the observable C
     C = create_C(num_vars, input_eqns)
 
@@ -135,13 +155,13 @@ def e3lin2(num_vars, num_samples, num_steps, input_eqns):
 
     gamma = 0
     beta = math.pi/4
-    for g in range(0, num_steps):
+    for g in range(0, num_steps+1):
         results = []
         for i in range(0, num_samples):
             # pick pauli, pass into B then C
             init = pick_pauli(C)
-            op1 = apply_B(beta, init)
-            op2 = apply_C(num_vars, input_eqns, gamma, op1)
+            op1 = apply_B(init, beta)
+            op2 = apply_C(op1, input_eqns, gamma, noise_p)
             
             #print(kron(op2[0]))
             p_hat = (op2[1]/op2[2])*(kron(op2[0])*rho).trace()
@@ -172,24 +192,23 @@ def convert_eqns(input_eqns):
         eqn_list.append(eqn)
     return eqn_list
 
-
 if __name__ == '__main__':
-    num_vars = 5
+    num_vars = 4
     d_constraint = 50
-    num_eqns = 6
-    num_samples = 100
-    num_steps = 20
+    num_eqns = 5
+    num_samples = 1000
+    num_steps = 3
+    noise_p = 0
 
     # get input matrix and result, Ax = b
     input_eqns = gen_equations.gen_eqns(num_vars, d_constraint, num_eqns)
-    f_results.append([num_vars, d_constraint, num_eqns, num_samples])
+    f_results.append([num_vars, d_constraint, num_eqns, num_samples, noise_p])
     f_results.append(input_eqns)
-    print('num_vars: %d, d_constraint: %d, num_eqns: %d, num_samples: %d' % (num_vars, d_constraint, num_eqns, num_samples))
-    #print('equations: \n %s x = %s' % (str(input_eqns[0]), str(input_eqns[1])))
+    print('num_vars: %d, d_constraint: %d, num_eqns: %d, num_samples: %d, noise_p: %.2f' % (num_vars, d_constraint, num_eqns, num_samples, noise_p))
     print(np.c_[input_eqns[0], input_eqns[1]])
     # turn input eqns matrix into a list
     input_eqns_list = convert_eqns(input_eqns)
-    e3lin2(num_vars, num_samples, num_steps, input_eqns_list)
+    e3lin2(num_vars, num_samples, num_steps, noise_p, input_eqns_list)
     
     # print results to file
     now = datetime.datetime.now()

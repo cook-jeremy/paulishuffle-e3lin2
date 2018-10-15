@@ -77,6 +77,20 @@ def solvable(EQNS, SOLS):
     else:
         return True
 
+''' TODO FINISH
+def unique_eqns(EQNS, SOLS):
+    # check if all the eqns are unique
+    num_rows = EQNS.shape[0]
+    AUGMENTED = np.concatenate((EQNS, SOLS), 1)
+
+    if not flag:
+        # found a column without a 1 in it
+        return False
+
+    # otherwise
+    return True
+'''
+
 def init_eqn_select(n, d, d_constraint):
     # given how many times a variable has already shown up (d_constraint), return list of useable variables
     eqn_select = []
@@ -98,6 +112,12 @@ def gen_eqns(n, d, f):
             #print('doesn\'t contain all variables, trying again...')
             num_failures += 1
             continue
+        '''
+        # check for the same equations
+        if not unique_eqns(sys[0]):
+            num_failures += 1
+            continue
+        '''
 
         # check if we are fully connected
         if not fully_connected(sys[0]):
