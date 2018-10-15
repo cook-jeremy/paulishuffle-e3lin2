@@ -26,7 +26,7 @@ def graph(info, data):
     confidence = 0.99
     delta = 1 - confidence
     error_bars = get_error(info[3], delta,  data[0])
-    plt.errorbar(data[0], data[2], yerr=error_bars, fmt='ro')
+    plt.errorbar(data[0], data[2], yerr=error_bars, fmt='-o')
     #plt.plot(data[0], data[2])
     plt.title('beta = %.2f, num_vars = %d, d = %d, num_eqns = %d, num_samples = %d' % (data[1][0], info[0], info[1], info[2], info[3]))
     plt.ylabel('<C>')
