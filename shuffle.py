@@ -197,14 +197,14 @@ if __name__ == '__main__':
     d_constraint = 50
     num_eqns = 5
     num_samples = 1000
-    num_steps = 3
+    num_steps = 1000
     noise_p = 0
 
     # get input matrix and result, Ax = b
     input_eqns = gen_equations.gen_eqns(num_vars, d_constraint, num_eqns)
     f_results.append([num_vars, d_constraint, num_eqns, num_samples, noise_p])
     f_results.append(input_eqns)
-    print('num_vars: %d, d_constraint: %d, num_eqns: %d, num_samples: %d, noise_p: %.2f' % (num_vars, d_constraint, num_eqns, num_samples, noise_p))
+    print('num_vars: %d\nd_constraint: %d\nnum_eqns: %d\nnum_samples: %d\nnoise_p: %.2f\nnum_steps: %d' % (num_vars, d_constraint, num_eqns, num_samples, noise_p, num_steps))
     print(np.c_[input_eqns[0], input_eqns[1]])
     # turn input eqns matrix into a list
     input_eqns_list = convert_eqns(input_eqns)
