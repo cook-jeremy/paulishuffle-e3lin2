@@ -15,6 +15,7 @@ def get_error(n, delta, gammas):
     errors = []    
     for gam in gammas:
         D = math.fabs(math.cos(gam)) + math.fabs(math.sin(gam))
+        #D2 = math.pow(2,n)
         err = math.sqrt(4*D*D*math.log(2/delta)/(2*n))
         errors.append(err)
     return errors
