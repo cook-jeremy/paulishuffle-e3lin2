@@ -11,7 +11,7 @@ using namespace std;
 struct matrix {
     vector< vector<int> > coeff;
     vector<int> sol;
-};
+}eqn_matrix;
 
 /**
 int main(void) {
@@ -31,7 +31,7 @@ int main(void) {
 }
 **/
 
-vector<int>* read_file(char* filename) {
+void read_file(char* filename) {
     string line;
     ifstream myfile(filename);
     vector< vector<int> > eqns;
@@ -56,9 +56,8 @@ vector<int>* read_file(char* filename) {
     else {
         cout << "Unable to open file" << endl; 
     }
-    for(int i = 0; i < eqns.size(); i++) {
-        cout << eqns.at(i).at(0) << " " << eqns.at(i).at(1) << " " << eqns.at(i).at(2) << " | " << sol.at(i) << endl;
-    }
+    eqn_matrix.coeff = eqns;
+    eqn_matrix.sol = sol;
 }
 
 int main(int argc, char **argv) {
@@ -70,5 +69,10 @@ int main(int argc, char **argv) {
     cout << "eqn file: " << argv[1] << endl;
     // read from file
     read_file(argv[1]);
+
+    for(int i = 0; i < eqn_matrix.coeff.size(); i++) {
+        cout << eqn_matrix.coeff.at(i).at(0) << " " << eqn_matrix.coeff.at(i).at(1) << " " << eqn_matrix.coeff.at(i).at(2) << " | " << eqn_matrix.sol.at(i) << endl;
+    }
+
     return 0;
 }
