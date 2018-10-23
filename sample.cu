@@ -34,35 +34,68 @@ int main(void) {
     // take the trace with the |+> state to get observable
 }
 **/
+int count_lines(char *filename) {
+    // count the number of lines in the file called filename                                    
+    FILE *fp = fopen(filename,"r");
+    int ch=0;
+    int lines=0;
+
+    if (fp == NULL) return 0;
+
+    while(!feof(fp)) {
+        ch = fgetc(fp);
+        if(ch == '\n') {
+            lines++;
+        }
+    }
+    fclose(fp);
+    return lines;
+}
 
 void read_file(char* filename) {
+    // get total number of equations and malloc bitmask array
+    int num_lines = count_lines(filename);
+    equations = (uint64_t *) malloc(num_lines*sizeof(uint64_t));
+
+    //FILE *eqn_file = fopen(filename, "r");
+    cout << "number of lines: " << num_lines << endl;
+
+    
     string line;
     ifstream myfile(filename);
-    vector< vector<int> > eqns;
-    vector<int> sol;
+
+    //vector< vector<int> > eqns;
+    //vector<int> sol;
     uint64_t b_eqn = 0;
+
     if (myfile.is_open()) {
         while(getline(myfile,line)) {
             //cout << line << '\n';
             vector<int> eqn;
             stringstream ss(line);
             int i;
-            int counter = 0;
+            int counter = -1;
             while (ss >> i) {
-                if(counter < 3) eqn.push_back(i);
-                else sol.push_back(i);
+                if(counter < 3) {
+                    eqn.push_back(i);
+                    b_eqn += pow(2,i);
+                } else { 
+                    sol.push_back(i);
+                }
                 if(ss.peek() == ',') ss.ignore();
                 counter++;
             }
-            eqns.push_back(eqn);
+            //eqns.push_back(eqn);
+            equations[counter] = b_eqn;
         }
         myfile.close();
     }
     else {
         cout << "Unable to open file" << endl; 
     }
-    eqn_matrix.coeff = eqns;
-    eqn_matrix.sol = sol;
+    //eqn_matrix.coeff = eqns;
+    //eqn_matrix.sol = sol;
+    
 }
 
 int main(int argc, char **argv) {
