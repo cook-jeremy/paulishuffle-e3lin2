@@ -193,11 +193,11 @@ def convert_eqns(input_eqns):
     return eqn_list
 
 if __name__ == '__main__':
-    num_vars = 4
-    d_constraint = 50
-    num_eqns = 5
+    num_vars = 6
+    d_constraint = 10
+    num_eqns = 12
     num_samples = 1000
-    num_steps = 1000
+    num_steps = 200
     noise_p = 0
 
     # get input matrix and result, Ax = b

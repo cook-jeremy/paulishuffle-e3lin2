@@ -4,6 +4,7 @@
 #include <fstream>
 #include <math.h>
 #include <string>
+#include <stdint.h>
 #include <vector>
 #include <sstream>
 using namespace std;
@@ -12,6 +13,9 @@ struct matrix {
     vector< vector<int> > coeff;
     vector<int> sol;
 }eqn_matrix;
+
+// array of equations in bitmask form, i.e. x_2 + x_3 + x_4 for 5 variables is 01110
+uint64_t *equations;
 
 /**
 int main(void) {
@@ -36,6 +40,7 @@ void read_file(char* filename) {
     ifstream myfile(filename);
     vector< vector<int> > eqns;
     vector<int> sol;
+    uint64_t b_eqn = 0;
     if (myfile.is_open()) {
         while(getline(myfile,line)) {
             //cout << line << '\n';
