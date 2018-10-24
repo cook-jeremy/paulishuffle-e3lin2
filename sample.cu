@@ -9,11 +9,6 @@
 #include <sstream>
 using namespace std;
 
-struct matrix {
-    vector< vector<int> > coeff;
-    vector<int> sol;
-}eqn_matrix;
-
 // array of equations in bitmask form, i.e. x_2 + x_3 + x_4 for 5 variables is 01110
 uint64_t *equations;
 
@@ -39,14 +34,10 @@ int count_lines(char *filename) {
     FILE *fp = fopen(filename,"r");
     int ch=0;
     int lines=0;
-
     if (fp == NULL) return 0;
-
     while(!feof(fp)) {
         ch = fgetc(fp);
-        if(ch == '\n') {
-            lines++;
-        }
+        if(ch == '\n') lines++;
     }
     fclose(fp);
     return lines;
@@ -59,43 +50,29 @@ void read_file(char* filename) {
 
     //FILE *eqn_file = fopen(filename, "r");
     cout << "number of lines: " << num_lines << endl;
-
     
-    string line;
-    ifstream myfile(filename);
-
-    //vector< vector<int> > eqns;
-    //vector<int> sol;
-    uint64_t b_eqn = 0;
-
-    if (myfile.is_open()) {
-        while(getline(myfile,line)) {
-            //cout << line << '\n';
-            vector<int> eqn;
-            stringstream ss(line);
-            int i;
-            int counter = -1;
-            while (ss >> i) {
-                if(counter < 3) {
-                    eqn.push_back(i);
-                    b_eqn += pow(2,i);
-                } else { 
-                    sol.push_back(i);
-                }
-                if(ss.peek() == ',') ss.ignore();
-                counter++;
+    // Create bitmasks    
+    FILE *fp = fopen(filename, "r");
+    for(int i = 0; i < num_lines; i++) {
+        char buff[255];
+        fscanf(fp, "%s", buff);
+        //cout << "buff: " << buff << endl;
+        char *pt;
+        pt = strtok(buff, ",");
+        int counter = 0;
+        uint64_t b_eqn = 0;
+        while (pt != NULL) {
+            int a = atoi(pt);
+            if(counter < 3) {
+                b_eqn += pow(2,a);
             }
-            //eqns.push_back(eqn);
-            equations[counter] = b_eqn;
+            pt = strtok(NULL, ",");
+            counter++;
         }
-        myfile.close();
+        // add to bitmask array
+        equations[i] = b_eqn;
+        b_eqn = 0;
     }
-    else {
-        cout << "Unable to open file" << endl; 
-    }
-    //eqn_matrix.coeff = eqns;
-    //eqn_matrix.sol = sol;
-    
 }
 
 int main(int argc, char **argv) {
@@ -105,12 +82,7 @@ int main(int argc, char **argv) {
         return 0;
     }
     cout << "eqn file: " << argv[1] << endl;
-    // read from file
+    // read from file and create bitmask array
     read_file(argv[1]);
-
-    for(int i = 0; i < eqn_matrix.coeff.size(); i++) {
-        cout << eqn_matrix.coeff.at(i).at(0) << " " << eqn_matrix.coeff.at(i).at(1) << " " << eqn_matrix.coeff.at(i).at(2) << " | " << eqn_matrix.sol.at(i) << endl;
-    }
-
     return 0;
 }
