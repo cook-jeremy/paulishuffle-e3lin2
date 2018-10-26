@@ -12,12 +12,37 @@
 #include <math.h>
 #include <curand.h>
 #include <curand_kernel.h>
-#include <experimental/filesystem>
+//#include <experimental/filesystem>
+
+#include "types.h" // circuit size specified here
+
+#define PI 3.14159265358979323846
+
+//Defined as powers of 2
+#define samplesPerThread (long int)3  // Number of samples generated per thread.
+#define threadsPerBlock (long int)10  // Number of threads per block.
+#define blocksPerChunk (long int)10   // Number of blocks per output array.
+#define numChunks (long int) 2        // Do the whole thing each time for a new gamma
+
+//Also powers of 2
+#define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
+#define nsamples numChunks + samplesPerChunk
+
+// define tally type
+#define tally_t int // Maybe switch to long int?
 
 using namespace std;
 
+__global__ void sample(int seed);
+
+// Device Memory
+__device__ __constant__ uint64_t d_eqn_masks[tally_array_size];
+__device__ tally_type d_chunk_tally[tally_array_size]; // Global memory
+// Chunktally stores the number of samples with n encountered D's
+// in d_chunk_tally[2*t], and the tally taking into acount sign in d_chunk_tally[2*t+1]
+   
 // array of equations in bitmask form, i.e. x_2 + x_3 + x_4 for 5 variables is 01110
-uint64_t *eqn_masks;
+uint64_t *h_eqn_masks;
 int num_eqns;
 
 int count_lines(char *filename) {
@@ -76,19 +101,27 @@ int main(int argc, char **argv) {
     cout << "eqn file: " << argv[1] << endl;
     // read from file and create bitmask array
     read_file(argv[1]);
+    
+    cout << "finished reading file" << endl;
 
-    // Read circuit. This should be in constant memory.
-    //Gate* h_circ = (Gate*)malloc(circuitSize); 
-    //FILE *circFile = fopen("circuit.circ", "rb");
-    //fread(h_circ, sizeof(char), circuitSize, circFile);
-    //fclose(circFile);
-    cudaMemcpyToSymbol(c_circ, h_circ, circuitSize);
-    free(h_circ);  // we don't need the circuit on the host.
+    //if (!print_device_properties()) return 0;
+
+    // First malloc space on device for d_eqn_masks, since it depends on num_eqns
+    cudaMalloc(d_eqn_masks, num_eqns*sizeof(uint64_t));
+    // Then copy equation bit mask array to device
+    cudaMemcpyToSymbol(d_eqn_masks, h_eqn_masks, num_eqns*sizeof(uint64_t));
+    // We don't need the masks on the host.
+    free(h_eqn_masks);  
 
     // Host memory for tallying output.
-    tallyType* h_chunkTally = (tallyType*)malloc(tallyArraySize*sizeof(tallyType));
-    tallyType* outputTally = (tallyType*)malloc(tallyArraySize*sizeof(tallyType));
-    for (int i = 0; i < tallyArraySize; i++) outputTally[i] = 0;
+    int tally_array_size = 2*num_eqns;
+    tally_t* h_chunk_tally = (tally_t*) malloc(tally_array_size*sizeof(tally_t));
+    tally_t* output_tally = (tally_t*)malloc(tally_array_size*sizeof(tally_t));
+    // Initialize both arrays to 0
+    for (int i = 0; i < tally_array_size; i++) {
+        h_chunk_tally[i] = 0;
+        output_tally[i] = 0;
+    }
 
     // Random seed
     // time_t t;
@@ -106,39 +139,33 @@ int main(int argc, char **argv) {
         cudaDeviceSynchronize();
 
         // Copy samples to host, zero out device data
-        cudaMemcpyFromSymbol(h_chunkTally, d_chunkTally, tallyArraySize*sizeof(tallyType));
-        cudaMemset(d_chunkTally, 0, tallyArraySize*sizeof(tallyType));
+        cudaMemcpyFromSymbol(h_chunk_tally, d_chunk_tally, tally_array_size*sizeof(tally_t));
+        cudaMemset(d_chunk_tally, 0, tally_array_size*sizeof(tally_t));
 
         // Add chunk tally to overall tally
-        for (int i = 0; i < tallyArraySize; i++) outputTally[i] += h_chunkTally[i];
+        for (int i = 0; i < tally_array_size; i++) output_tally[i] += h_chunk_tally[i];
     }
 
     // print output
     std::cout << nsamples << std::endl;
-    for (int i = 0; 2*i < tallyArraySize; i+=1) {
-        std::cout << i << "," << outputTally[2*i] << "," << outputTally[2*i+1] << std::endl;
+    for (int i = 0; 2*i < tally_array_size; i+=1) {
+        std::cout << i << "," << output_tally[2*i] << "," << output_tally[2*i+1] << std::endl;
     }
 
     // Free memory
-    free(h_chunkTally);
-    free(outputTally);
+    free(h_chunk_tally);
+    free(output_tally);
 
     return 0;
 }
 
 
 __device__ void parity(int* x, uint64_t data) {
-    /* Alternate method? https://graphics.stanford.edu/~seander/bithacks.html#ParityWith64Bits
-    unsigned char b;  // byte value to compute the parity of
-    bool parity = (((b * 0x0101010101010101ULL) & 0x8040201008040201ULL) % 0x1FF) & 1;
-    // multiplication may be slower than just iterating through?
-    */
-
+    // Flip the sign of x if data has an odd number of 1's in it
     while (data) {
         *x *= -1;
         data = data & (data - 1);
     }
-
 }
 
 __device__ void random(curandState_t* state, uint64_t* output) {
@@ -146,103 +173,42 @@ __device__ void random(curandState_t* state, uint64_t* output) {
 }
 
 __global__ void sample(int seed) {
-
     // Initialize curand
     curandState_t state;
     curand_init(seed, blockIdx.x, threadIdx.x, &state);
 
     // Per thread local memory. Can probably make this smaller with uglier code.
-    uint64_t xs, zs, rand_data, toFlip, scales, upshiftedxs, upshiftedzs;
-    tallyType out; // keep temporary answer in local memory
+    uint64_t xs, zs;
+    tally_t num_D; // number of D(\gamma)
     int sign; // store separately
 
     //int index = blockIdx.x * blockDim.x + threadIdx.x;
     //int stride = blockDim.x * gridDim.x;
     
     for(int j = 0; j < (1 << samplesPerThread); j++) {
-        
         // Pick a random equation from eqn_masks
-        uint64_t init_mask = eqn_masks[randint between 0 and num_eqns];
+        int rand = 0; // TODO how to get a rand int on device from 0 to num_eqns - 1
+        uint64_t init_mask = eqn_masks[rand];
         xs = mask;
         zs = mask;
-        
+         
         for(int i = 0; i < num_eqns; i++) {
             uint64_t mask = eqn_masks[i];
             int *test = 1;
             parity(test, mask & xs);
             if(*test == -1) {
-                cout << "doesn't commute" << endl;
-                // where is gamma in all of this?
+                // Doesn't commute
+                rand = 0; // TODO generate rand float between 0 and 1
+
             }
+
+            /** TODO FINISH THIS FOR LOOP **/
         }
 
-
-
-
-        /**
-        // either X or I at random
-        random(&state, &xs);
-        xs &= (0xffffffffffffffff >> (64 - width*height));
-        zs = 0;
-
-        out = 0;
-        sign = 1;
-
-        for (int i = 0; i < depth*gatesPerLayer; i++) {
-            switch(c_circ[i].type) {
-                case ROOTX:
-                    parity(&sign, ~xs & zs & c_circ[i].data);
-                    xs ^= c_circ[i].data & zs;
-                    break;
-                case ROOTY:
-                    parity(&sign, ~xs & zs & c_circ[i].data);
-                    toFlip = (zs ^ xs) & c_circ[i].data;
-                    xs ^= toFlip;
-                    zs ^= toFlip;
-                    break;     
-                case TGATE: // Only gate that is random
-                    random(&state, &rand_data);
-                    rand_data &= c_circ[i].data;
-
-                    parity(&sign, rand_data & xs & zs);
-                    
-                    scales = xs & c_circ[i].data;
-                    while (scales) {
-                        out += 1;
-                        //out *= sqrt2;
-                        scales = scales & (scales - 1);
-                    }
-                    zs ^= xs & rand_data;
-
-                    break;
-                case CPHASERIGHT:
-                case CPHASEDOWN:
-                    if (c_circ[i].type == CPHASERIGHT) {
-                        upshiftedxs = ((c_circ[i].data << 1) & xs) >> 1;
-                        upshiftedzs = ((c_circ[i].data << 1) & zs) >> 1;
-                        zs ^= (c_circ[i].data & xs) << 1;
-                    } else {
-                        upshiftedxs = ((c_circ[i].data << width) & xs) >> width;
-                        upshiftedzs = ((c_circ[i].data << width) & zs) >> width;
-                        zs ^= (c_circ[i].data & xs) << width;
-                    }
-                    
-                    zs ^= upshiftedxs;
-                    parity(&sign, c_circ[i].data & xs & upshiftedxs & ((c_circ[i].data & zs) ^ upshiftedzs));
-                    break; 
-                default:
-                    break; // silence warning
-            }
-        }
-        **/
-        // Compare to output string to get probability
-		if (xs == 0) { // <0|X|0> = <1|X|1> = <0|Y|0> = <1|Y|1> = 0
-            parity(&sign, zs & c_circ[depth*gatesPerLayer].data); // Only <1|Z|1> = -1
-
+        if (zs == 0 && (xs & zs) == 0) { // <0|X|0> = <1|X|1> = <0|Y|0> = <1|Y|1> = 0
             // Write to global output memory. Use atomic add to avoid sync issues.
-            atomicAdd(&d_chunkTally[out*2], (tallyType)1);
-            atomicAdd(&d_chunkTally[out*2+1], (tallyType)sign);
+            atomicAdd(&d_chunkTally[num_D*2], (tally_t)1);
+            atomicAdd(&d_chunkTally[num_D*2+1], (tally_t)sign);
         }
     }
 }
-
