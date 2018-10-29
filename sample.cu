@@ -21,6 +21,8 @@ using namespace std;
 // Device Memory
 #define num_consts 3
 #define tally_t int 
+__device__ __constant__ uint64_t *d_eqn_masks;
+__device__ __constant__ int d_num_eqns;
 __device__ __constant__ double d_consts[num_consts];
 // Chunktally stores the number of samples with n encountered D's in d_chunk_tally[2*t],
 // and the tally taking into acount sign in d_chunk_tally[2*t+1]
@@ -31,7 +33,7 @@ __device__ tally_t *d_chunk_tally;
 uint64_t *h_eqn_masks;
 int num_eqns;
 
-__global__ void sample(int seed, int num_eqns, uint64_t *d);
+__global__ void sample(int seed);
 
 // Count number of lines in file, which indicates number of equations
 int count_lines(char *filename) {
@@ -84,9 +86,11 @@ int main(int argc, char **argv) {
     read_file(argv[1]);
 
     // Copy bit mask array to device, to be passed d pointer later
-    uint64_t *d;
-    cudaMalloc((void **)&d, num_eqns*sizeof(uint64_t));
-    cudaMemcpy(d, h_eqn_masks, num_eqns*sizeof(uint64_t), cudaMemcpyHostToDevice);
+    uint64_t *d_ptr;
+    cudaMalloc((void **)&d_ptr, num_eqns*sizeof(uint64_t));
+    cudaMemcpyToSymbol(d_eqn_masks, &d_ptr, sizeof(uint64_t *));
+    cudaMemcpy(d_ptr, h_eqn_masks, num_eqns*sizeof(uint64_t), cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(d_num_eqns, &num_eqns, sizeof(int));
 
     // Copy relevant D(e^{i\gamma C}) constants to device
     double tot = abs(sin(gamma)) / (abs(cos(gamma)) + abs(sin(gamma)));
@@ -117,7 +121,7 @@ int main(int argc, char **argv) {
         std::cout << "Running chunk " << (j+1) << " of " << numChunks << std::endl;
         // Take samples
         //sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
-        sample<<<1, threadsPerBlock>>>(time(0), num_eqns, d); //random version
+        sample<<<1, threadsPerBlock>>>(time(0)); //random version
         // Wait for GPU to finish before accessing on host
         cudaDeviceSynchronize();
         // Copy samples to host, zero out device data
@@ -184,19 +188,19 @@ __device__ void apply_iZZZ(uint64_t *xs, uint64_t *zs, uint64_t mask) {
     *zs = 0;
 }
 
-__global__ void sample(int seed, int num_eqns, uint64_t *d_eqn_masks) {
+__global__ void sample(int seed) {
     // Initialize curand
     curandState_t state;
     curand_init(seed, blockIdx.x, threadIdx.x, &state);
 
     printf("STARTING IN DEVICE CODE NOW\n");
     printf("block, thread %d, %d\n", blockIdx.x, threadIdx.x);
-    printf("num eqns: %d\n", num_eqns);
+    printf("num eqns: %d\n", d_num_eqns);
     for(int i = 0; i < 3; i++) {
         printf("d_consts[%d]: %f\n", i, d_consts[i]);
     }
     /**
-    for(int i = 0; i < num_eqns; i++) {
+    for(int i = 0; i < d_num_eqns; i++) {
         printf("eqn %d: %" PRIu64 "\n", i, d[i]);
     }
     **/
@@ -209,7 +213,7 @@ __global__ void sample(int seed, int num_eqns, uint64_t *d_eqn_masks) {
     //for(int j = 0; j < (1 << samplesPerThread); j++) {
     for(int j = 0; j < samplesPerThread; j++) {
         // Pick a random equation from eqn_masks
-        int rand = get_rand_int(state, 0, num_eqns - 1);
+        int rand = get_rand_int(state, 0, d_num_eqns - 1);
         printf("rand: %d\n", rand);
         printf("--------- INIT ---------\n");
         uint64_t init_mask = d_eqn_masks[rand];
@@ -218,7 +222,7 @@ __global__ void sample(int seed, int num_eqns, uint64_t *d_eqn_masks) {
 
         print_xs_zs(xs, zs);
         printf("-------- Applying e^{i gamma C} --------\n"); 
-        for(int i = 0; i < num_eqns; i++) {
+        for(int i = 0; i < d_num_eqns; i++) {
             uint64_t mask = d_eqn_masks[i];
             printf("pq: ");
             printb(sizeof(uint64_t), &mask);
@@ -235,8 +239,8 @@ __global__ void sample(int seed, int num_eqns, uint64_t *d_eqn_masks) {
                     apply_iZZZ(&xs, &zs, mask);
                     printf("-------------------- aaa ----------------------\n");
                     print_xs_zs(xs, zs);
-                    if(d_consts[1] < 0) sign = -1*sign;
-                } else if(d_consts[2] < 0) sign = -1*sign;
+                    if(d_consts[1] < 0) sign *= -1;
+                } else if(d_consts[2] < 0) sign *= -1;
                 num_D += 1;            
             }
         }
@@ -245,8 +249,8 @@ __global__ void sample(int seed, int num_eqns, uint64_t *d_eqn_masks) {
         if (zs == 0 && (xs & zs) == 0) { 
             printf("~~~~~~~~~~~ Doing something to tally ~~~~~~~~~~~~~~~, num_D: %d\n", num_D);
             // Write to global output memory. Use atomic add to avoid sync issues.
-            atomicAdd(&d_chunk_tally[num_D*2], (tally_t)1);
-            atomicAdd(&d_chunk_tally[num_D*2+1], (tally_t)sign);
+            atomicAdd(&d_chunk_tally[num_D*2], (tally_t) 1);
+            atomicAdd(&d_chunk_tally[num_D*2+1], (tally_t) sign);
         }
     }
 }

@@ -12,24 +12,16 @@ __global__ void add() {
 
 int main() {
     int *h = (int *) malloc(N*sizeof(int));
-    h[0] = 3;
-    h[1] = 2;
-    h = {0};
     for (int i = 0; i<N; ++i) {
-        //h[i] = i+1;
+        h[i] = i+1;
         printf("h[%d]: %d\n", i, h[i]);
     }
 
     int *d_ptr;
-    cudaGetSymbolAddress((void **)&d_ptr, d);
-
-    //printf("%p\n", (void *) d_ptr);
-
+    //cudaGetSymbolAddress((void **)&d_ptr, d);
     cudaMalloc((void **) &d_ptr, N*sizeof(int));
 
-    //void *d_ptr = fixed_cudaMalloc(N*sizeof(int));
-
-    //cudaMemcpyToSymbol(d, h, N*sizeof(int));
+    cudaMemcpyToSymbol(d, &d_ptr, sizeof(int *));
     cudaMemcpy(d_ptr, h, N*sizeof(int), cudaMemcpyHostToDevice);
     free(h);
 
@@ -38,6 +30,5 @@ int main() {
 
     printf("returned\n");
     //cudaFree(d_ptr);
-
     return 0;
 }
