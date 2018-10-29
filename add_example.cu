@@ -12,8 +12,11 @@ __global__ void add() {
 
 int main() {
     int *h = (int *) malloc(N*sizeof(int));
+    h[0] = 3;
+    h[1] = 2;
+    h = {0};
     for (int i = 0; i<N; ++i) {
-        h[i] = i+1;
+        //h[i] = i+1;
         printf("h[%d]: %d\n", i, h[i]);
     }
 
