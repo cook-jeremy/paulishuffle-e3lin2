@@ -11,10 +11,10 @@
 using namespace std;
 
 //Defined as powers of 2
-#define samplesPerThread (long int) 5  // Number of samples generated per thread.
-#define threadsPerBlock (long int)10   // Number of threads per block.
-#define blocksPerChunk (long int)10    // Number of blocks per output array.
-#define numChunks (long int) 2        // Do the whole thing each time for a new gamma
+#define samplesPerThread (long int)1  // Number of samples generated per thread.
+#define threadsPerBlock (long int)1   // Number of threads per block.
+#define blocksPerChunk (long int)1    // Number of blocks per output array.
+#define numChunks (long int) 1        // Do the whole thing each time for a new gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 
@@ -129,17 +129,25 @@ int main(int argc, char **argv) {
     memset(h_chunk_tally, 0, tally_size*sizeof(tally_t));
     memset(output_tally, 0, tally_size*sizeof(tally_t));
 
-    for (int j = 0; j < (1 << numChunks); j++) {
-        std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << std::endl;
+    //tally_t *d_chunk_ptr;
+    //cudaGetSymbolAddress((void **)&d_chunk_ptr, d_chunk_tally);
 
+    //for (int j = 0; j < (1 << numChunks); j++) {
+    for(int j = 0; j < numChunks; j++) {
+        //std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << std::endl;
+        std::cout << "Running chunk " << (j+1) << " of " << numChunks << std::endl;
         // Take samples
-        sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
-
+        //sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
+        sample<<<1, threadsPerBlock>>>(time(0)); //random version
         // Wait for GPU to finish before accessing on host
         cudaDeviceSynchronize();
-
         // Copy samples to host, zero out device data
+        //cudaMemcpyFromSymbol(h_chunk_tally, d_chunk_tally, tally_size*sizeof(tally_t));
         cudaMemcpy(h_chunk_tally, t_ptr, tally_size*sizeof(tally_t), cudaMemcpyDeviceToHost);
+        //for(int i = 0; i < tally_size; i++) {
+        //    printf("tally[%d]: %d\n", i, h_chunk_tally[i]);
+        //}
+        //cudaMemset(d_chunk_tally, 0, tally_size*sizeof(tally_t)); // are we allowed to do this?
         cudaMemset(t_ptr, 0, tally_size*sizeof(tally_t));
 
         // Add chunk tally to overall tally
@@ -156,6 +164,29 @@ int main(int argc, char **argv) {
     free(h_chunk_tally);
     free(output_tally);
     return 0;
+}
+
+// Print an integer in binary
+__device__ void printb(size_t const size, void const * const ptr) {
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    for(int i = size - 1; i >= 0; i--) {
+        for(int j = 7; j >= 0; j--) {
+            byte = (b[i] >> j) & 1;
+            if(i < 2) printf("%u", byte);
+            //printf("%u", byte);
+        }
+    }
+    printf("");
+}
+
+__device__ void print_xs_zs(uint64_t xs, uint64_t zs) {
+    printf("xs: ");
+    printb(sizeof(xs), &xs);
+    printf("\n");
+    printf("zs: ");
+    printb(sizeof(zs), &zs);
+    printf("\n");
 }
 
 // Flip the sign of x if data has an odd number of 1's in it
@@ -187,28 +218,75 @@ __global__ void sample(int seed) {
     // Initialize curand
     curandState_t state;
     curand_init(seed, blockIdx.x, threadIdx.x, &state);
+
+    printf("STARTING IN DEVICE CODE NOW\n");
+    printf("block, thread %d, %d\n", blockIdx.x, threadIdx.x);
+    printf("num eqns: %d\n", d_num_eqns);
+    for(int i = 0; i < 3; i++) {
+        printf("d_consts[%d]: %f\n", i, d_consts[i]);
+    }
+    for(int i = 0; i < d_num_eqns; i++) {
+        printf("eqn[%d]: ", i);
+        printb(sizeof(uint64_t), &d_eqn_masks[i]);
+        printf("\n");
+    }
+    for(int i = 0; i < d_num_eqns; i++) {
+        printf("sols[%d]: %d\n", i, d_sols[i]);
+    }
     
-    // Per thread local memory. 
+    // Per thread local memory. Can probably make this smaller with uglier code.
     uint64_t xs, zs;
     tally_t num_D = 0; 
     int sign = 1;
+    //int test_sign = 1;
     
-    for(int j = 0; j < (1 << samplesPerThread); j++) {
+    //for(int j = 0; j < (1 << samplesPerThread); j++) {
+    for(int j = 0; j < samplesPerThread; j++) {
         // Pick a random equation from eqn_masks
         int rand = get_rand_int(state, 0, d_num_eqns - 1);
+        printf("rand: %d\n", rand);
+        printf("--------- INIT ---------\n");
         uint64_t init_mask = d_eqn_masks[rand];
         xs = init_mask;
         zs = init_mask;
+
+        print_xs_zs(xs, zs);
+        printf("-------- Applying e^{i gamma C} --------\n"); 
         for(int i = 0; i < d_num_eqns; i++) {
             uint64_t mask = d_eqn_masks[i];
+            printf("pq: ");
+            printb(sizeof(uint64_t), &mask);
+            printf("\n");
+            print_xs_zs(xs, zs);
             if(test_parity(mask & xs) == -1) {
                 // Doesn't commute
                 float rand_f = curand_uniform(&state);
+                printf("rand float: %f\n", rand_f);
                 if(rand_f <= d_consts[0]) {
                     // Apply ZZZ
                     parity(&sign, xs & zs & mask);
                     zs ^= mask;
                     if((xs & mask) & ((xs & mask) - 1) == 0) sign *= 1;
+                    /**
+                    uint64_t overlap = xs & mask; // check overlap with of new eqn (mask) with original equation (xs)
+                    if(overlap & ((overlap) - 1) == 0) {
+                        // 1 overlap with newly picked equation
+                        printf("1 overlap: ");
+                        printb(sizeof(uint64_t), &overlap);
+                        printf("\n");
+                        // We either have X or Y in overlapped region. If X then flip sign
+                        if(overlap & zs == 0) {
+                            // We have X
+                            sign *= -1;
+                        }
+                    } else {
+                        // 3 overlaps with newly picked equation
+                        printf("3 overlap: ");
+                        printb(sizeof(uint64_t), &overlap);
+                        printf("\n");
+                        parity(&sign, zs & overlap);
+                    }
+                    **/
                     sign *= 2*d_sols[i] - 1; // dabc
                     sign *= d_consts[1]; // d_consts[1] is sign(sin(gamma))
                 } else {
@@ -216,6 +294,8 @@ __global__ void sample(int seed) {
                 }
                 num_D += 1;            
             }
+            printf("sign: %d\n", sign);
+            printf("---------------\n");
         }
         // Because <+|Y|+> = <+|Z|+> = 0, we only care if both of these don't happen
         if (zs == 0 && (xs & zs) == 0) { 
