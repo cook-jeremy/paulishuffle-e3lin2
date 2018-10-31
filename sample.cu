@@ -11,10 +11,10 @@
 using namespace std;
 
 //Defined as powers of 2
-#define samplesPerThread (long int)3  // Number of samples generated per thread.
-#define threadsPerBlock (long int)10   // Number of threads per block.
-#define blocksPerChunk (long int)10    // Number of blocks per output array.
-#define numChunks (long int) 2        // Do the whole thing each time for a new gamma
+#define samplesPerThread (long int)1  // Number of samples generated per thread.
+#define threadsPerBlock (long int)1   // Number of threads per block.
+#define blocksPerChunk (long int)1    // Number of blocks per output array.
+#define numChunks (long int) 1        // Do the whole thing each time for a new gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 
@@ -109,7 +109,8 @@ int main(int argc, char **argv) {
     cudaMemcpyToSymbol(d_chunk_tally, &t_ptr, sizeof(tally_t *));
     // Copy relevant D(e^{i\gamma C}) constants to device
     double tot = abs(sin(gamma)) / (abs(cos(gamma)) + abs(sin(gamma)));
-    double sign_s, sign_c = 1;
+    double sign_s = 1;
+    double sign_c = 1;
     if(sin(gamma) < 0) sign_s = -1;
     if(cos(gamma) < 0) sign_c = -1;
     double h_consts[num_consts] = {tot, sign_s, sign_c};
@@ -131,13 +132,13 @@ int main(int argc, char **argv) {
     //tally_t *d_chunk_ptr;
     //cudaGetSymbolAddress((void **)&d_chunk_ptr, d_chunk_tally);
 
-    for (int j = 0; j < (1 << numChunks); j++) {
-    //for(int j = 0; j < numChunks; j++) {
-        std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << std::endl;
-        //std::cout << "Running chunk " << (j+1) << " of " << numChunks << std::endl;
+    //for (int j = 0; j < (1 << numChunks); j++) {
+    for(int j = 0; j < numChunks; j++) {
+        //std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << std::endl;
+        std::cout << "Running chunk " << (j+1) << " of " << numChunks << std::endl;
         // Take samples
-        sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
-        //sample<<<1, threadsPerBlock>>>(time(0)); //random version
+        //sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
+        sample<<<1, threadsPerBlock>>>(time(0)); //random version
         // Wait for GPU to finish before accessing on host
         cudaDeviceSynchronize();
         // Copy samples to host, zero out device data
@@ -172,7 +173,8 @@ __device__ void printb(size_t const size, void const * const ptr) {
     for(int i = size - 1; i >= 0; i--) {
         for(int j = 7; j >= 0; j--) {
             byte = (b[i] >> j) & 1;
-            printf("%u", byte);
+            if(i < 2) printf("%u", byte);
+            //printf("%u", byte);
         }
     }
     printf("");
@@ -208,75 +210,75 @@ __global__ void sample(int seed) {
     curandState_t state;
     curand_init(seed, blockIdx.x, threadIdx.x, &state);
 
-    //printf("STARTING IN DEVICE CODE NOW\n");
-    //printf("block, thread %d, %d\n", blockIdx.x, threadIdx.x);
-    //printf("num eqns: %d\n", d_num_eqns);
-    //for(int i = 0; i < 3; i++) {
-    //    printf("d_consts[%d]: %f\n", i, d_consts[i]);
-    //}
+    printf("STARTING IN DEVICE CODE NOW\n");
+    printf("block, thread %d, %d\n", blockIdx.x, threadIdx.x);
+    printf("num eqns: %d\n", d_num_eqns);
+    for(int i = 0; i < 3; i++) {
+        printf("d_consts[%d]: %f\n", i, d_consts[i]);
+    }
+    for(int i = 0; i < d_num_eqns; i++) {
+        printf("eqn[%d]: ", i);
+        printb(sizeof(uint64_t), &d_eqn_masks[i]);
+        printf("\n");
+    }
+    for(int i = 0; i < d_num_eqns; i++) {
+        printf("sols[%d]: %d\n", i, d_sols[i]);
+    }
     
     // Per thread local memory. Can probably make this smaller with uglier code.
     uint64_t xs, zs;
     tally_t num_D = 0; 
     int sign = 1;
     
-    for(int j = 0; j < (1 << samplesPerThread); j++) {
-    //for(int j = 0; j < samplesPerThread; j++) {
+    //for(int j = 0; j < (1 << samplesPerThread); j++) {
+    for(int j = 0; j < samplesPerThread; j++) {
         // Pick a random equation from eqn_masks
         int rand = get_rand_int(state, 0, d_num_eqns - 1);
-        //printf("rand: %d\n", rand);
-        //printf("--------- INIT ---------\n");
+        printf("rand: %d\n", rand);
+        printf("--------- INIT ---------\n");
         uint64_t init_mask = d_eqn_masks[rand];
         xs = init_mask;
         zs = init_mask;
 
-        //print_xs_zs(xs, zs);
-        //printf("-------- Applying e^{i gamma C} --------\n"); 
+        print_xs_zs(xs, zs);
+        printf("-------- Applying e^{i gamma C} --------\n"); 
         for(int i = 0; i < d_num_eqns; i++) {
             uint64_t mask = d_eqn_masks[i];
-            //printf("pq: ");
-            //printb(sizeof(uint64_t), &mask);
-            //printf("\n");
-            //print_xs_zs(xs, zs);
+            printf("pq: ");
+            printb(sizeof(uint64_t), &mask);
+            printf("\n");
+            print_xs_zs(xs, zs);
             int test = 1;
             parity(&test, mask & xs);
+            printf("parity: %d\n", test);
             if(test == -1) {
                 // Doesn't commute
                 float rand_f = curand_uniform(&state);
-                //printf("rand float: %f\n", rand_f);
+                printf("rand float: %f\n", rand_f);
                 if(rand_f <= d_consts[0]) {
                     // Apply ZZZ
                     zs ^= mask;
                     // check for 3 X's (or is it 1 X?, if 1 X then change != to == below)
                     if(xs & mask & ((xs & mask) - 1) != 0) {
+                        printf("3 x's\n");
                         // we have exactly 3 X's in equation region
                         sign *= -1;
                     }
-                    int sign_change = 2*d_sols[i] - 1; // dabc
-                    sign *= sign_change;
-
-                    if(d_consts[1] < 0) {
-                        // if sin(gamma) < 0
-                        sign *= -1;
-                    }
-                } else if(d_consts[2] < 0) {
-                    // if cos(gamma) < 0
-                    sign *= -1; 
+                    sign *= 2*d_sols[i] - 1; // dabc
+                    sign *= d_consts[1]; // d_consts[1] is sign(sin(gamma))
+                } else {
+                    sign *= d_consts[2]; // d_consts[1] is sign(cos(gamma))
                 }
                 num_D += 1;            
             }
+            printf("sign: %d\n", sign);
+            printf("---------------\n");
         }
-        //printf("watch out\n");
         // Because <+|Y|+> = <+|Z|+> = 0, we only care if both of these don't happen
-        //if (zs == 0 && (xs & zs) == 0) { 
-            //printf("~~~~~~~~~~~ Doing something to tally ~~~~~~~~~~~~~~~, num_D: %d\n", num_D);
+        if (zs == 0 && (xs & zs) == 0) { 
             // Write to global output memory. Use atomic add to avoid sync issues.
             atomicAdd(&d_chunk_tally[num_D*2], (tally_t) 1);
             atomicAdd(&d_chunk_tally[num_D*2+1], (tally_t) sign);
-        //}
-        //for(int i = 0; i < 2*d_num_eqns; i++) {
-        //    printf("chunk_tally[%d]: %d\n", i, d_chunk_tally[i]);
-        //}
-
+        }
     }
 }
