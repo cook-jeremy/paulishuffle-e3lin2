@@ -208,7 +208,7 @@ __global__ void sample(int seed) {
                     // Apply ZZZ
                     parity(&sign, xs & zs & mask);
                     zs ^= mask;
-                    if((xs & mask) & ((xs & mask) - 1) == 0) sign *= 1;
+                    if((xs & mask) & ((xs & mask) - 1) == 0) sign *= -1;
                     sign *= 2*d_sols[i] - 1; // dabc
                     sign *= d_consts[1]; // d_consts[1] is sign(sin(gamma))
                 } else {
