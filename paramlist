@@ -1,0 +1,2 @@
+sample.exe equations/figure_eqns/equations 0.2 > output/tally0.2_1.o 2> output/tally0.2_1.e
+python exact.py 20 45 equations/figure_eqns/equations 0.2 > output/exact0.2.o 2> output/exact0.2.e

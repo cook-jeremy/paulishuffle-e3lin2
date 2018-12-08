@@ -1,7 +1,7 @@
 import random
 import sys
 import numpy as np
-from numpy.linalg import matrix_rank
+import numpy.linalg
 
 dbg = 1
 
@@ -68,10 +68,12 @@ def contains_all_vars(EQNS):
     return True
 
 def solvable(EQNS, SOLS):
-    # check if the system is inconsistent via Rouché–Capelli theorem
+    # check if the system is inconsistent via Rouche Capelli theorem
     AUGMENTED = np.concatenate((EQNS, SOLS), 1)
-    rank_AUG = matrix_rank(AUGMENTED)
-    rank_COEFF = matrix_rank(EQNS)
+    rank_AUG = sum(np.linalg.svd(AUGMENTED)[1] != 0)
+    rank_COEFF = sum(np.linalg.svd(EQNS)[1] != 0)
+    #rank_AUG = matrix_rank(AUGMENTED)
+    #rank_COEFF = matrix_rank(EQNS)
     if rank_COEFF < rank_AUG:
         return False
     else:

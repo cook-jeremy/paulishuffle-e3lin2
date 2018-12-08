@@ -18,25 +18,11 @@ def convert_eqns(input_eqns):
         eqn_list.append(eqn)
     return eqn_list
 
-if __name__ == '__main__':
-    num_vars = 20
-    d_constraint = 30
-    num_eqns = 45
-    num_samples = 1000
-    num_steps = 1000
-    noise_p = 0
-
+def create_eqns(filename, num_vars = 20, d_constraint = 30, num_eqns = 45, noise_p = 0):
     # get input matrix and result, Ax = b
     input_eqns = gen_equations.gen_eqns(num_vars, d_constraint, num_eqns)
     # equation list
     el = convert_eqns(input_eqns)
-
-    # print eqns to file
-    now = datetime.datetime.now()
-    directory = 'equations/' + str(now.strftime('%m-%d-%Y')) + '/'
-    if not os.path.exists(directory):
-            os.makedirs(directory)
-    filename = directory + str(now.strftime('%H:%M:%S%p'))
 
     #with open(filename, 'wb') as fp:
     fp = open(filename, 'w')
@@ -45,3 +31,12 @@ if __name__ == '__main__':
         fp.write(to_write)
 
         #pickle.dump(f_results, fp)
+
+if __name__ == '__main__':
+    # print eqns to file
+    now = datetime.datetime.now()
+    directory = 'equations/' + str(now.strftime('%m-%d-%Y')) + '/'
+    if not os.path.exists(directory):
+            os.makedirs(directory)
+    filename = directory + str(now.strftime('%H:%M:%S%p'))
+    create_eqns(filename)

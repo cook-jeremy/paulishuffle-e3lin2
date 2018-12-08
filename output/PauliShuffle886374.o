@@ -1,0 +1,12 @@
+TACC: Starting up job 886374
+TACC: starting parallel tasks...
+--------------------------------------------------
+TACC Launcher -> 1 processors allocated.
+TACC Launcher -> 2 total tasks to complete.
+--------------------------------------------------
+ 
+TACC Launcher -> Initating task 1 on c224-104.maverick.tacc.utexas.edu (sample.exe equations/figure_eqns/equations 0.2 > output/tally0.2_1.o 2> output/tally0.2_1.e)
+TACC Launcher -> Initating task 2 on c224-104.maverick.tacc.utexas.edu (python exact.py 20 45 equations/figure_eqns/equations 0.2 > output/exact0.2.o 2> output/exact0.2.e)
+TACC: Shutting down parallel environment.
+TACC: Shutdown complete. Exiting.
+Job Complete

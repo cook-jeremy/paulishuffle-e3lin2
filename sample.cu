@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
     memset(output_tally, 0, tally_size*sizeof(tally_t));
 
     for (int j = 0; j < (1 << numChunks); j++) {
-        std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << std::endl;
+        //std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << std::endl;
 
         // Take samples
         sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
