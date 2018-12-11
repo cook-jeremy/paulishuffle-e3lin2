@@ -2,7 +2,7 @@ import numpy as np
 import math
 import sys
 
-I = np.matrix('1 0; 0 1') 
+I = np.matrix('1 0; 0 1')
 X = np.matrix('0 1; 1 0')
 Y = np.matrix('0 -1;1 0')*complex(0,1)
 Z = np.matrix('1 0; 0 -1')
@@ -20,8 +20,9 @@ def apply_C(num_vars, rho, overlap_eqns, gamma):
         state = [I]*num_vars
         for j in range(0, 3):
             state[overlap_eqns[i][j]] = Z
-        exp = kron(state)
-        eiC = np.asmatrix(np.diag(np.exp(np.diag(np.complex(0,1)*0.5*gamma*dabc*exp))))
+
+        exp = np.array(kron(state)).diagonal()
+        eiC = np.asmatrix(np.diag(np.exp(np.complex(0,1)*0.5*gamma*dabc*exp)))
         rho =  eiC*rho*np.conj(eiC)
     return rho
 
@@ -42,10 +43,8 @@ def init_Y(num_vars, picked_eqn):
     rho = kron(input_state)
     return rho
 
-# given initially picked equation, 
+# given initially picked equation,
 def e3lin2_exact_helper(num_vars, picked_eqn, overlap_eqns, gamma):
-    beta = math.pi/4
-
     # create our input state |+>|+>...|+>
     f_state = [0.5*(I+X)]*num_vars
     f_rho = kron(f_state)
@@ -56,37 +55,47 @@ def e3lin2_exact_helper(num_vars, picked_eqn, overlap_eqns, gamma):
     expec = np.asscalar((op2*f_rho).trace()).real
     return expec
 
-#Returns the set of equations with any shared variables
-def shared_eqns(eqns, i):
-    eqn = set(eqns[i][0:3])
-    num_eqns = len(eqns)
-    indices = []
-    for j in range(num_eqns):
-        if j == i:
-            pass
-        eqn_j = set(eqns[j][0:3])
-        if len(eqn & eqn_j) != 0:
-            indices.append(j)
 
-    return np.array([eqns[j] for j in indices])
-
-def e3lin2_exact(num_vars, num_eqns, i, eqns_location, gamma):
-  
-    eqns = dict()
-
+def e3lin2_exact(i, eqns_location, gamma):
+    all_eqns = []
     f = open(eqns_location, "r")
-    for j in range(num_eqns):
-        eqns[j] = map(int, f.readline().split(","))
+    line = f.readline()
+    while line:
+        all_eqns.append(map(int, line.split(",")))
+        line = f.readline()
 
-    return e3lin2_exact_helper(num_vars, eqns[i], shared_eqns(eqns, i), gamma)
+    base = set(all_eqns[i][:-1])  # qubits of base equation
+    qubits = set(all_eqns[i][:-1])  # qubits in subcircuit
+    neighbor_eqns = []
+
+    for j in range(len(all_eqns)):
+        if len(base & set(all_eqns[j][:-1])) > 0:
+            qubits |= set(all_eqns[j][:-1])
+            neighbor_eqns.append(all_eqns[j])
+
+    qubits = list(qubits)
+    num_vars = len(qubits)
+
+    base_eqn = all_eqns[i]
+    for k in range(3):
+        base_eqn[k] = qubits.index(base_eqn[k])
+
+    for j in range(len(neighbor_eqns)):
+        for k in range(3):
+            neighbor_eqns[j][k] = qubits.index(neighbor_eqns[j][k])
+
+    print(num_vars)
+    print(base_eqn)
+    print(neighbor_eqns)
+    return e3lin2_exact_helper(num_vars, base_eqn, neighbor_eqns, gamma)
 
 
 if __name__ == '__main__':
-    if(len(sys.argv) != 6):
-        print('Please specify <num_vars>, <num_eqns>, <eqn_number>, <eqns_location>, <gamma>')
-    num_vars = int(sys.argv[1])
-    num_eqns = int(sys.argv[2])
-    eqn_number = int(sys.argv[3])
-    eqns_location = sys.argv[4]
-    gamma = float(sys.argv[5])
-    print(e3lin2_exact(num_vars, num_eqns, eqn_number, eqns_location, gamma))
+    if(len(sys.argv) != 4):
+        print('Please specify <eqn_number>, <eqns_location>, <gamma>')
+    else:
+        eqn_number = int(sys.argv[1])
+        eqns_location = sys.argv[2]
+        gamma = float(sys.argv[3])
+
+        print(e3lin2_exact(eqn_number, eqns_location, gamma))

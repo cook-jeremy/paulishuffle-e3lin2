@@ -2,14 +2,14 @@ import os, math, json, shutil
 
 
 
-def get_value(max_bin, log_num_samples, sample_dict, signed_sample_dict, gamma):
+def get_value(max_bin, log_num_samples, sample_dict, gamma):
     D = abs(math.sin(gamma)) + abs(math.cos(gamma))
 
     ####  Get estimate.
     estimate = 0
 
     for i in range(max_bin+1):
-        estimate += signed_sample_dict[i]*D**i
+        estimate += sample_dict[i][1]*D**i
 
     for i in range(log_num_samples):
         estimate /= 2
@@ -35,7 +35,7 @@ def get_value(max_bin, log_num_samples, sample_dict, signed_sample_dict, gamma):
     eConst = math.sqrt(math.log(2/delta) / 2)
 
     num_nonzero_samples = 0
-    for i in range(max_bin+1): num_nonzero_samples += sample_dict[i]
+    for i in range(max_bin+1): num_nonzero_samples += sample_dict[0][i]
 
     # probability of not sampling 0
     p = num_nonzero_samples
@@ -48,7 +48,7 @@ def get_value(max_bin, log_num_samples, sample_dict, signed_sample_dict, gamma):
     # mean of nonzero samples
     nonzero_estimate = 0
     for i in range(max_bin+1):
-        nonzero_estimate += signed_sample_dict[i]*D**i
+        nonzero_estimate += sample_dict[i][1]*D**i
     nonzero_estimate /= num_nonzero_samples
 
     # error on nonzero samples mean
@@ -67,7 +67,7 @@ def get_value(max_bin, log_num_samples, sample_dict, signed_sample_dict, gamma):
 if __name__ == "__main__":
     max_bin = 5 # 1 + (d-1)*3
     log_num_samples = 20
-    sample_dict = {0:12, 1:42, 2:0, 3:4, 4:12, 5:12}
+    sample_dict = {0:(12,12), 1:(42,12), 2:(0,0), 3:(4,10), 4::tab12, 5:12}
     signed_sample_dict = {0:12, 1:12, 2:0, 3:-4, 4:10, 5:0}
     gamma = 0.12
 
