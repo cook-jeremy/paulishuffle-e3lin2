@@ -57,38 +57,36 @@ def e3lin2_exact_helper(num_vars, picked_eqn, overlap_eqns, gamma):
     return expec
 
 #Returns the set of equations with any shared variables
-def shared_eqns(shared_variable_dict, eqns, i):
-    eqn = eqns[i,:]
-    l1 = shared_variable_dict[eqn[0]]
-    l2 = shared_variable_dict[eqn[1]]
-    l3 = shared_variable_dict[eqn[2]]
-    return np.array([eqns[j,:] for j in filter(lambda x : x != i, set.union(l1, l2, l3))], copy=True)
+def shared_eqns(eqns, i):
+    eqn = set(eqns[i][0:3])
+    num_eqns = len(eqns)
+    indices = []
+    for j in range(num_eqns):
+        if j == i:
+            pass
+        eqn_j = set(eqns[j][0:3])
+        if len(eqn & eqn_j) != 0:
+            indices.append(j)
 
-def e3lin2_exact(num_vars, num_eqns, eqns_location, gamma):
+    return np.array([eqns[j] for j in indices])
+
+def e3lin2_exact(num_vars, num_eqns, i, eqns_location, gamma):
   
-    #Dictionary of (varianble number -> eqns containing that variable)
-    shared_variable_dict = dict([(i, set([])) for i in range(num_eqns)])
-    eqns = np.zeros((num_eqns, 4))
+    eqns = dict()
 
     f = open(eqns_location, "r")
-    for i in range(num_eqns):
-        eqn = map(int, f.readline().split(","))
-        #store new eqution
-        eqns[i,:] = eqn
-        #add equation i to the list of equations with variable j
-        for j in eqn[:3]:
-             shared_variable_dict[j].add(i)
-    arr = shared_eqns(shared_variable_dict, eqns, 2)
-    #print(arr)
-    #print(e3lin2_exact(num_vars, eqns[2,:], [[8, 11, 17, 0], [2, 16, 17, 1]], gamma))
-    return sum([e3lin2_exact_helper(num_vars, eqns[i,:], shared_eqns(shared_variable_dict, eqns, i), gamma) for i in range(num_eqns)])
+    for j in range(num_eqns):
+        eqns[j] = map(int, f.readline().split(","))
+
+    return e3lin2_exact_helper(num_vars, eqns[i], shared_eqns(eqns, i), gamma)
 
 
 if __name__ == '__main__':
-    if(len(sys.argv) != 5):
-        print('Please specify <num_vars>, <num_eqns>, <eqns_location>, <gamma>')
+    if(len(sys.argv) != 6):
+        print('Please specify <num_vars>, <num_eqns>, <eqn_number>, <eqns_location>, <gamma>')
     num_vars = int(sys.argv[1])
     num_eqns = int(sys.argv[2])
-    eqns_location = sys.argv[3]
-    gamma = float(sys.argv[4])
-    print(e3lin2_exact(num_vars, num_eqns, eqns_location, gamma))
+    eqn_number = int(sys.argv[3])
+    eqns_location = sys.argv[4]
+    gamma = float(sys.argv[5])
+    print(e3lin2_exact(num_vars, num_eqns, eqn_number, eqns_location, gamma))
