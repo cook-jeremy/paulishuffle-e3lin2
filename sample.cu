@@ -103,10 +103,14 @@ int main(int argc, char **argv) {
     cudaMemcpy(sol_ptr, h_sols, num_eqns*sizeof(bool), cudaMemcpyHostToDevice);
     // Copy num equations to device
     cudaMemcpyToSymbol(d_num_eqns, &num_eqns, sizeof(int));
+    
+    int tally_size = 2*(num_eqns+1);
+
     // Malloc space for d_chunk_tally
     tally_t *t_ptr;
-    cudaMalloc((void **)&t_ptr, 2*num_eqns*sizeof(tally_t));
+    cudaMalloc((void **)&t_ptr, tally_size*sizeof(tally_t));
     cudaMemcpyToSymbol(d_chunk_tally, &t_ptr, sizeof(tally_t *));
+
     // Copy relevant D(e^{i\gamma C}) constants to device
     double tot = abs(sin(gamma)) / (abs(cos(gamma)) + abs(sin(gamma)));
     double sign_s = 1;
@@ -121,7 +125,6 @@ int main(int argc, char **argv) {
     free(h_sols);
 
     // Host memory for tallying output.
-    int tally_size = 2*num_eqns;
     tally_t* h_chunk_tally = (tally_t*) malloc(tally_size*sizeof(tally_t));
     tally_t* output_tally = (tally_t*)malloc(tally_size*sizeof(tally_t));
 

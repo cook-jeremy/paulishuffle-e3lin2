@@ -84,9 +84,6 @@ def e3lin2_exact(i, eqns_location, gamma):
         for k in range(3):
             neighbor_eqns[j][k] = qubits.index(neighbor_eqns[j][k])
 
-    print(num_vars)
-    print(base_eqn)
-    print(neighbor_eqns)
     return e3lin2_exact_helper(num_vars, base_eqn, neighbor_eqns, gamma)
 
 

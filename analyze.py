@@ -35,7 +35,7 @@ def get_value(max_bin, log_num_samples, sample_dict, gamma):
     eConst = math.sqrt(math.log(2/delta) / 2)
 
     num_nonzero_samples = 0
-    for i in range(max_bin+1): num_nonzero_samples += sample_dict[0][i]
+    for i in range(max_bin+1): num_nonzero_samples += float(sample_dict[i][0])
 
     # probability of not sampling 0
     p = num_nonzero_samples
@@ -67,8 +67,7 @@ def get_value(max_bin, log_num_samples, sample_dict, gamma):
 if __name__ == "__main__":
     max_bin = 5 # 1 + (d-1)*3
     log_num_samples = 20
-    sample_dict = {0:(12,12), 1:(42,12), 2:(0,0), 3:(4,10), 4::tab12, 5:12}
-    signed_sample_dict = {0:12, 1:12, 2:0, 3:-4, 4:10, 5:0}
+    sample_dict = {0:(12,12), 1:(42,12), 2:(0,0), 3:(4,10), 4:(12,10), 5:(12,0)}
     gamma = 0.12
 
     estimate, error, hoeffding = get_value(max_bin, log_num_samples, sample_dict, signed_sample_dict, gamma)

@@ -18,7 +18,7 @@ def convert_eqns(input_eqns):
         eqn_list.append(eqn)
     return eqn_list
 
-def create_eqns(filename, num_vars = 20, d_constraint = 30, num_eqns = 45, noise_p = 0):
+def create_eqns(filename, num_vars = 20, d_constraint = 30, num_eqns = 45):
     # get input matrix and result, Ax = b
     input_eqns = gen_equations.gen_eqns(num_vars, d_constraint, num_eqns)
     # equation list
