@@ -38,18 +38,12 @@ if __name__ == '__main__':
 
     log_num_samples += run_params["log_num_gpus"]
 
-    # number of equations in subcircuit
-    bound = 3*(eqn_params["d_constraint"]-1) + 1
-    if (eqn_params["num_eqns"] < bound): bound = eqn_params["num_eqns"]
-
     print("log samples: "+str(log_num_samples))
-    print("bound: "+str(bound))
     for i in range(len(list(samples.keys()))):
         print(str(i) + " - "+str(samples[i]))
 
-
-    estimate, error, hoeffding = analyze.get_value(bound,\
-            log_num_samples, samples, run_params["gamma"])
+    estimate, error, hoeffding = analyze.get_value(eqn_params["num_eqns"],\
+            eqn_params["d_constraint"], log_num_samples, samples, run_params["gamma"])
 
     ################ Exact data
 

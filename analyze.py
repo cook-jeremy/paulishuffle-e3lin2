@@ -2,7 +2,12 @@ import os, math, json, shutil
 
 
 
-def get_value(max_bin, log_num_samples, sample_dict, gamma):
+def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma):
+
+    # get bound on number of quasiprobability samples
+    max_bin = 3*(d_constraint-1) + 1
+    if (num_eqns < max_bin): max_bin = num_eqns
+
     D = abs(math.sin(gamma)) + abs(math.cos(gamma))
 
     ####  Get estimate.
@@ -14,6 +19,8 @@ def get_value(max_bin, log_num_samples, sample_dict, gamma):
     for i in range(log_num_samples):
         estimate /= 2
 
+    estimate *= (num_eqns/2)
+
     #### Get Hoeffding error bound.
 
     delta = 0.01
@@ -23,7 +30,7 @@ def get_value(max_bin, log_num_samples, sample_dict, gamma):
     # this is unstable because big numbers are big
     # hoeffding = eConst * 2 * D**max_bin / 2**(log_num_samples/2)
 
-    hoeffding = eConst * 2
+    hoeffding = eConst * 2 * (num_eqns/2)
 
     for i in range(max(max_bin,log_num_samples)):
         if i < max_bin: hoeffding *= D
@@ -53,6 +60,7 @@ def get_value(max_bin, log_num_samples, sample_dict, gamma):
 
     # error on nonzero samples mean
     nonzero_error = eConst * 2 / math.sqrt(num_nonzero_samples)
+    nonzero_error *= (num_eqns/2)
     for i in range(max_bin): nonzero_error *= D
 
     # combine error on p and error on nonzero samples
@@ -62,16 +70,5 @@ def get_value(max_bin, log_num_samples, sample_dict, gamma):
 
     return estimate, error, hoeffding
 
-
-
-if __name__ == "__main__":
-    max_bin = 5 # 1 + (d-1)*3
-    log_num_samples = 20
-    sample_dict = {0:(12,12), 1:(42,12), 2:(0,0), 3:(4,10), 4:(12,10), 5:(12,0)}
-    gamma = 0.12
-
-    estimate, error, hoeffding = get_value(max_bin, log_num_samples, sample_dict, signed_sample_dict, gamma)
-
-    print(estimate, error, hoeffding)
 
 
