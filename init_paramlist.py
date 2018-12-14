@@ -5,13 +5,13 @@ import json, datetime
 gamma = 0.12
 noise_p = 0.1 # unused at the moment
 
-num_vars = 10
-d_constraint = 10
-num_eqns = 20
+num_vars = 3
+d_constraint = 1
+num_eqns = 1
 
 log_num_gpus = 3
 
-eqns_location = "equations/figure_eqns"
+eqns_location = "equations/test"
 # eqns_location = "none" # creates new equations
 
 

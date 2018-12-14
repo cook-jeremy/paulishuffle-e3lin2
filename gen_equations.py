@@ -148,7 +148,7 @@ def create_eqns(n, d, f):
         print('ERROR(gen_equations): 3f <= nd')
         sys.exit(1)
     
-    if f <= n/3:
+    if n != 3 and f <= n/3:
         print('ERROR(gen_equations): not enough equations to have fully connected graph')
         sys.exit(1)
 
