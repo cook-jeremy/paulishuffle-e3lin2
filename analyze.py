@@ -7,6 +7,7 @@ def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma):
     # get bound on number of quasiprobability samples
     max_bin = 3*(d_constraint-1) + 1
     if (num_eqns < max_bin): max_bin = num_eqns
+    num_eqns = float(num_eqns)
 
     D = abs(math.sin(gamma)) + abs(math.cos(gamma))
 
@@ -64,7 +65,7 @@ def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma):
     for i in range(max_bin): nonzero_error *= D
 
     # combine error on p and error on nonzero samples
-    error = p_error*(nonzero_estimate + nonzero_error)
+    error = p_error*(abs(nonzero_estimate) + nonzero_error)
     error += nonzero_error*(p + p_error)
     error += nonzero_error * p_error
 

@@ -193,10 +193,13 @@ __global__ void sample(int seed) {
     
     // Per thread local memory. 
     uint64_t xs, zs;
-    tally_t num_D = 0; 
-    int sign = 1;
+    tally_t num_D; 
+    int sign;
     
     for(int j = 0; j < (1 << samplesPerThread); j++) {
+        num_D = 0;
+        sign = 1;
+
         // Pick a random equation from eqn_masks
         int rand = get_rand_int(state, 0, d_num_eqns - 1);
         uint64_t init_mask = d_eqn_masks[rand];
