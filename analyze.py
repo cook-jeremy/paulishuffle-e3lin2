@@ -2,12 +2,13 @@ import os, math, json, shutil
 
 
 
-def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma):
+def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma, max_bin=None):
 
-    # get bound on number of quasiprobability samples
-    max_bin = 3*(d_constraint-1) + 1
-    if (num_eqns < max_bin): max_bin = num_eqns
-    num_eqns = float(num_eqns)
+    if max_bin is None:
+        # get bound on number of quasiprobability samples
+        max_bin = 3*(d_constraint-1) + 1
+        if (num_eqns < max_bin): max_bin = num_eqns
+        num_eqns = float(num_eqns)
 
     D = abs(math.sin(gamma)) + abs(math.cos(gamma))
 

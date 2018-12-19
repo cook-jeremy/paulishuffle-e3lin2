@@ -10,6 +10,31 @@ if __name__ == '__main__':
     eqn_params = json.loads(f.read())
     f.close()
 
+    max_qubits = 0
+    max_eqns = 0
+
+    ################ Exact data
+
+    exact_sum = 0
+
+    for i in range(eqn_params["num_eqns"]):
+        try:
+            f = open("output/exact_%d.o" % (i,), "r")
+
+            qubits = int(f.readline())
+            eqns = int(f.readline())
+            if qubits > max_qubits: max_qubits = qubits
+            if eqns > max_eqns: max_eqns = eqns
+
+            exact_sum += float(f.readline())/2
+            f.close()
+        except Exception:
+            print("Error in output/exact_%d.o" % (i,))
+            raise ValueError
+
+    print("Maximum qubits in subcircuit: "+ str(max_qubits))
+    print("Maximum eqns in subcircuit: "+ str(max_eqns))
+
     ################# GPU Data
 
     log_num_samples = None
@@ -43,16 +68,9 @@ if __name__ == '__main__':
         print(str(i) + " - "+str(samples[i]))
 
     estimate, error, hoeffding = analyze.get_value(eqn_params["num_eqns"],\
-            eqn_params["d_constraint"], log_num_samples, samples, run_params["gamma"])
+            eqn_params["d_constraint"], log_num_samples, samples, run_params["gamma"], max_bin=max_eqns)
 
-    ################ Exact data
 
-    exact_sum = 0
-
-    for i in range(eqn_params["num_eqns"]):
-        f = open("output/exact_%d.o" % (i,), "r")
-        exact_sum += float(f.read())/2
-        f.close()
 
     ############## Export output
 
