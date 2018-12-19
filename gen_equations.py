@@ -98,49 +98,49 @@ def gen_eqns(n, d, f, fail_kind=False):
     fail_kinds = [0,0,0,0,0]
 
     while not satisfied:
-        if num_failures > 1000:
+        if num_failures > 100:
             break
 
         # create A and b in Ax = b
         sys = create_eqns(n, d, f)
 
         if sys == False:
-            print("couldn't fit that many equations, trying again...")
+            #print("couldn't fit that many equations, trying again...")
             num_failures += 1
             fail_kinds[0] += 1
             continue
 
         # check if we have used all variables
         if not contains_all_vars(sys[0]):
-            print('doesn\'t contain all variables, trying again...')
+            #print('doesn\'t contain all variables, trying again...')
             num_failures += 1
             fail_kinds[1] += 1
             continue
 
         # check for the same equations
         if not unique_eqns(sys[0], sys[1]):
-            print('repeated eqn, trying again...')
+            #print('repeated eqn, trying again...')
             num_failures += 1
             fail_kinds[2] += 1
             continue
 
         # check if we are fully connected
         if not fully_connected(sys[0]):
-            print('ins\'t fully connected, trying again...')
+            #print('ins\'t fully connected, trying again...')
             num_failures += 1
             fail_kinds[3] += 1
             continue
 
         # row reduce and check if system is solvable
         if solvable(sys[0], sys[1]):
-            print('system solvable, trying again...')
+            #print('system solvable, trying again...')
             num_failures += 1
             fail_kinds[4] += 1
             continue
 
-        satisfed = True
+        satisfied = True
 
-    if fail_kind is True:
+    if fail_kind:
         if satisfied: return True
         return fail_kinds
 
