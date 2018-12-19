@@ -4,16 +4,15 @@ import json, datetime
 
 gamma = 0.12
 noise_p = 0.1 # unused at the moment
+log_num_gpus = 0
 
-num_vars = 3
-d_constraint = 1
-num_eqns = 1
+# eqns_location = "equations/test"
+eqns_location = "none" # creates new equations
 
-log_num_gpus = 3
-
-eqns_location = "equations/test"
-# eqns_location = "none" # creates new equations
-
+if eqns_location == "none":
+    num_vars = 21
+    d_constraint = 4
+    num_eqns = 28
 
 def init_sample():
     f = open("paramlist_gpu", "w")
@@ -45,7 +44,6 @@ if __name__ == '__main__':
 
         create_equations.create_eqns(eqns_location, num_vars, d_constraint, num_eqns)
 
-
         f = open(eqns_location+".json", "w")
         f.write(json.dumps({
             "num_vars": num_vars,
@@ -53,6 +51,11 @@ if __name__ == '__main__':
             "num_eqns": num_eqns,
         }))
         f.close()
+    else:
+        f = open(eqns_location+".json")
+        data = json.loads(f.read())
+        f.close()
+        num_eqns = data["num_eqns"]
 
     f = open("output/run_params", "w")
     f.write(json.dumps({

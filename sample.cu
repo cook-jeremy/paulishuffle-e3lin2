@@ -180,10 +180,14 @@ __device__ int test_parity(uint64_t data) {
 
 // Get a uniformly random integer inclusively between min and max
 __device__ int get_rand_int(curandState_t state, int min, int max) {
+    int out = curand(&state) % (max-min + 1);
+    return out + 0;
+    /*
     float rand_f = curand_uniform(&state);
-    rand_f *= (max - min + 0.999999);
-    rand_f += min;
-    return (int)truncf(rand_f);
+    // rand_f *= (1 + max - min);
+    rand_f *= 2;
+    return (int)ceil(rand_f);
+    */
 }
 
 __global__ void sample(int seed) {
@@ -225,10 +229,11 @@ __global__ void sample(int seed) {
             }
         }
         // Because <+|Y|+> = <+|Z|+> = 0, we only care if both of these don't happen
-        if (zs == 0 && (xs & zs) == 0) { 
+        if (zs == 0) { 
             // Write to global output memory. Use atomic add to avoid sync issues.
             atomicAdd(&d_chunk_tally[num_D*2], (tally_t) 1);
             atomicAdd(&d_chunk_tally[num_D*2+1], (tally_t) sign);
+            //atomicAdd(&d_chunk_tally[rand*2], (tally_t) 1);
         }
     }
 }
