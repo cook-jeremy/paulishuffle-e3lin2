@@ -92,7 +92,7 @@ def unique_eqns(EQNS, SOLS):
     # otherwise
     return True
 
-def gen_eqns(n, d, f, fail_kind=False):
+def gen_eqns(n, d, f, fail_kind=False, cost_stats=False):
     satisfied = False
     num_failures = 0
     fail_kinds = [0,0,0,0,0]
@@ -144,7 +144,11 @@ def gen_eqns(n, d, f, fail_kind=False):
         if satisfied: return True
         return fail_kinds
 
+    if cost_stats:
+        return get_cost_stats(sys[0])
+
     print('num failures: %s' % num_failures)
+
     return sys
 
 def create_eqns(n, d, f):
@@ -195,7 +199,35 @@ def create_eqns(n, d, f):
     # (is there a better way to do this?)
     return [EQNS, SOLS]
 
+
+def get_cost_stats(EQNS):
+    EQNS = np.array(EQNS)
+
+    eqn_idxs = []
+    for i in range(len(EQNS)):
+        idxs = set([j for j in range(len(EQNS[i])) if EQNS[i][j] == 1])
+        eqn_idxs.append(idxs)
+
+
+    max_eqns = 0
+    max_qubits = 0
+    for i in range(len(eqn_idxs)):
+        idxs = set([j for j in list(eqn_idxs[i])])
+
+        eqns = 0
+        for j in range(len(eqn_idxs)):
+            if len(eqn_idxs[j] & eqn_idxs[i]) > 0:
+                idxs |= eqn_idxs[j]
+                eqns += 1
+
+        if eqns > max_eqns: max_eqns = eqns
+        if len(idxs) > max_qubits: max_qubits = len(idxs)
+
+    return max_eqns,max_qubits
+
 if __name__ == '__main__':
     ret = gen_eqns(9, 100, 9)
     print(ret[0])
     print(ret[1])
+
+
