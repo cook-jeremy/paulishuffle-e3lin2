@@ -1,0 +1,5 @@
+ssh jmc8253@maverick.tacc.utexas.edu
+
+
+Todo in nest:
+    change inner_x_w from dictionary to set
