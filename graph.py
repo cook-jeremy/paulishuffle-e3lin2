@@ -16,10 +16,11 @@ def graph(data):
         print(data[0][i], "\t", data[1][i], "\t", data[2][i], "\t", data[3][i])
     # data = [x1, y1, x2, y2] x1 and y1 are exact, x2 and y2 are GPU pauli shuffle
     plt.plot(data[0], data[1], '-o', label= 'exact')
-    plt.plot(data[2], data[3], '-o', label= 'pauli')
+    plt.plot(data[0], data[2], '-o', label= 'nest')
+    plt.plot(data[0], data[3], '-o', label= 'pauli')
     #plt.plot(data[0], data[2], '-o', label = 'D')
     #plt.plot(data[0], data[3], '-o', label = 'X')
-    plt.title('Exact & Pauli')
+    plt.title('Exact, Nest, Pauli')
     plt.legend()
     plt.ylabel('<C>')
     plt.xlabel('gamma')
