@@ -1,98 +1,77 @@
 import numpy as np
-import math
-import sys
+import math, sys, random
 
-I = np.matrix('1 0; 0 1')
-X = np.matrix('0 1; 1 0')
-Y = np.matrix('0 -1;1 0')*complex(0,1)
-Z = np.matrix('1 0; 0 -1')
-paulis = [I,X,Y,Z]
+def inner_x_w(x, num_vars, bit_eqns, gamma):
+    total_phase = 1/math.sqrt(2**num_vars)
+    # for each equation, calculate overlap
+    for i in range(len(bit_eqns)): 
+        total_phase *= math.e**(-complex(0,1)*gamma*0.5*((-1)**(bit_eqns[i][1] + num_ones(x & bit_eqns[i][0]))))
+    return total_phase
 
-f_results = []
-basis_dict = {}
-dbg = 0
+def convert_to_bin(num_vars, eqn_set):
+    n = num_vars - 1
+    bit_eqns = []
+    for eqn in eqn_set:
+        y = 0
+        for j in range(3):
+            y += 2**(n - eqn[j])
+        bit_eqns.append([y, eqn[3]])
+    return bit_eqns
 
-# apply e^{i\gamma Z_a Z_b Z_c} to equation containing variables a,b,c
-def apply_C(num_vars, rho, overlap_eqns, gamma):
-    for i in range(0, len(overlap_eqns)):
-        solution = overlap_eqns[i][3]
-        dabc = 1 - 2*solution # 0 --> 1 and 1 --> -1
-        state = [I]*num_vars
-        for j in range(0, 3):
-            state[overlap_eqns[i][j]] = Z
-
-        exp = np.array(kron(state)).diagonal()
-        eiC = np.asmatrix(np.diag(np.exp(np.complex(0,1)*0.5*gamma*dabc*exp)))
-        rho =  eiC*rho*np.conj(eiC)
-    return rho
-
-# take the kronecker (tensor) product of a list of len(m) matrices
-def kron(m):
-    if len(m) == 1:
-        return m
-    total = np.kron(m[0], m[1])
-    if len(m) > 2:
-        for i in range(2, len(m)):
-            total = np.kron(total, m[i])
-    return total
-
-def init_Y(num_vars, picked_eqn):
-    input_state = [I]*num_vars
-    for i in range(0, 3):
-        input_state[picked_eqn[i]] = Y
-    rho = kron(input_state)
-    return rho
-
-# given initially picked equation,
-def e3lin2_exact_helper(num_vars, picked_eqn, overlap_eqns, gamma):
-    # create our input state |+>|+>...|+>
-    f_state = [0.5*(I+X)]*num_vars
-    f_rho = kron(f_state)
-
-    # create our input state I...IYYYI...I
-    init_state = init_Y(num_vars, picked_eqn)
-    op2 = apply_C(num_vars, init_state, overlap_eqns, gamma)
-    expec = np.asscalar((op2*f_rho).trace()).real
-    return expec
-
+def num_ones(n): 
+    count = 0
+    while (n): 
+        count += n & 1
+        n >>= 1 
+    return count
 
 def e3lin2_exact(i, eqns_location, gamma):
     all_eqns = []
     f = open(eqns_location, "r")
     line = f.readline()
     while line:
-        all_eqns.append(map(int, line.split(",")))
+        all_eqns.append(list(map(int, line.split(","))))
         line = f.readline()
 
-    base = set(all_eqns[i][:-1])  # qubits of base equation
-    qubits = set(all_eqns[i][:-1])  # qubits in subcircuit
-    neighbor_eqns = []
-
+    base_eqn = all_eqns[i]
+    qubits = set()
     for j in range(len(all_eqns)):
-        if len(base & set(all_eqns[j][:-1])) > 0:
-            qubits |= set(all_eqns[j][:-1])
-            neighbor_eqns.append(all_eqns[j])
-
-    qubits = list(qubits)
+        qubits |= set(all_eqns[j][:-1])
     num_vars = len(qubits)
+    bit_eqns = convert_to_bin(num_vars, all_eqns)
+    ys = bit_eqns[i][0]
+    
+    total = 0
+    num_samples = 1000
+    for i in range(num_samples):
+        x = random.randint(0, 2**(num_vars)-1)
+        alpha = -complex(0,1)*((-1)**(num_ones(x & ys)))
+        row_index = x ^ ys
+        inner1 = np.conj(inner_x_w(row_index, num_vars, bit_eqns, gamma))
+        inner2 = inner_x_w(x, num_vars, bit_eqns, gamma)
+        total += 2**num_vars*inner1*inner2*alpha
+    total /= num_samples
 
-    base_eqn = [x for x in all_eqns[i]]
-    for k in range(3):
-        base_eqn[k] = qubits.index(base_eqn[k])
+    '''
+    # exact calculation, sum over basis states instead of sampling
+    total = 0
+    for i in range(2**num_vars):
+        alpha = -complex(0,1)*((-1)**(num_ones(i & ys)))
+        row_index = i ^ ys
+        inner1 = np.conj(inner_x_w(row_index, num_vars, bit_eqns, gamma))
+        inner2 = inner_x_w(i, num_vars, bit_eqns, gamma)
+        total += 2**num_vars*inner1*inner2*alpha
 
-    final_eqns = []
-    for j in range(len(neighbor_eqns)):
-        eqn = []
-        for k in range(3):
-            eqn.append(qubits.index(neighbor_eqns[j][k]))
-        eqn.append(neighbor_eqns[j][3])
-        final_eqns.append(eqn)
+    total /= 2**num_vars    
+    #total *= (-1)**base_eqn[3] why don't we need this?
+    '''
 
-    print(len(qubits))
-    print(len(final_eqns))
+    # error calculation
+    delta = 0.001
+    eps = math.sqrt(2*math.log(2/delta)/num_samples)
+    error = eps*len(all_eqns)/2
 
-    return e3lin2_exact_helper(num_vars, base_eqn, final_eqns, gamma)
-
+    return np.real(total), error
 
 if __name__ == '__main__':
     if(len(sys.argv) != 4):
