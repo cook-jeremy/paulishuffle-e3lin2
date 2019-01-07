@@ -1,3 +1,4 @@
+// must compile with flag: -arch=sm_60
 #include <stdio.h>
 #include <iostream>
 #include <stdint.h>
