@@ -32,6 +32,8 @@ def create_eqns(filename, num_vars = 20, d_constraint = 30, num_eqns = 45):
 
         #pickle.dump(f_results, fp)
 
+    return gen_equations.get_cost_stats(input_eqns[0])
+
 if __name__ == '__main__':
     # print eqns to file
     now = datetime.datetime.now()

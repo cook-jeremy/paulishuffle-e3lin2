@@ -13,8 +13,8 @@ using namespace std;
 //Defined as powers of 2
 #define samplesPerThread (long int) 5  // Number of samples generated per thread.
 #define threadsPerBlock (long int)10   // Number of threads per block.
-#define blocksPerChunk (long int)10    // Number of blocks per output array.
-#define numChunks (long int) 2        // Do the whole thing each time for a new gamma
+#define blocksPerChunk (long int)15    // Number of blocks per output array.
+#define numChunks (long int) 6        // Do the whole thing each time, same gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 

@@ -15,6 +15,8 @@ export WORKDIR=./output/$SLURM_JOB_ID/
 export CONTROL_FILE=paramlist_gpu
 export TACC_LAUNCHER_SCHED=interleaved 
 
-$TACC_LAUNCHER_DIR/paramrun SLURM $EXECUTABLE $WORKDIR $CONTROL_FILE
+SECONDS=0
+time $TACC_LAUNCHER_DIR/paramrun SLURM $EXECUTABLE $WORKDIR $CONTROL_FILE
+echo Time elapsed: $SECONDS sec
 
 echo "Job Complete"

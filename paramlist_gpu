@@ -1,8 +1,8 @@
-sample.exe equations/figure_eqns 0.12 > output/tally_0.o 2> output/tally_0.e
-sample.exe equations/figure_eqns 0.12 > output/tally_1.o 2> output/tally_1.e
-sample.exe equations/figure_eqns 0.12 > output/tally_2.o 2> output/tally_2.e
-sample.exe equations/figure_eqns 0.12 > output/tally_3.o 2> output/tally_3.e
-sample.exe equations/figure_eqns 0.12 > output/tally_4.o 2> output/tally_4.e
-sample.exe equations/figure_eqns 0.12 > output/tally_5.o 2> output/tally_5.e
-sample.exe equations/figure_eqns 0.12 > output/tally_6.o 2> output/tally_6.e
-sample.exe equations/figure_eqns 0.12 > output/tally_7.o 2> output/tally_7.e
+sample.exe equations/figure 0 > output/tally_0.o 2> output/tally_0.e
+sample.exe equations/figure 0 > output/tally_1.o 2> output/tally_1.e
+sample.exe equations/figure 0 > output/tally_2.o 2> output/tally_2.e
+sample.exe equations/figure 0 > output/tally_3.o 2> output/tally_3.e
+sample.exe equations/figure 0 > output/tally_4.o 2> output/tally_4.e
+sample.exe equations/figure 0 > output/tally_5.o 2> output/tally_5.e
+sample.exe equations/figure 0 > output/tally_6.o 2> output/tally_6.e
+sample.exe equations/figure 0 > output/tally_7.o 2> output/tally_7.e

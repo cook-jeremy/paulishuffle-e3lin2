@@ -1,18 +1,22 @@
 import create_equations
-import sys, os
+import sys, os, math
 import json, datetime
 
-gamma = 0.12
-noise_p = 0.1 # unused at the moment
-log_num_gpus = 0
+# gamma = math.pi/4
 
-# eqns_location = "equations/test"
-eqns_location = "none" # creates new equations
+gamma = [math.pi*i/25 for i in range(25)][0]
+
+noise_p = 0.1 # unused at the moment
+log_num_gpus = 3
+
+eqns_location = "equations/figure"
+# eqns_location = "none" # creates new equations
 
 if eqns_location == "none":
-    num_vars = 21
-    d_constraint = 4
-    num_eqns = 28
+    num_vars = 64
+    d_constraint = 5 # 4,5,6,7,8
+    num_eqns = int(21*d_constraint + 1)
+    print("d=%d, m=%d" % (d_constraint, num_eqns))
 
 def init_sample():
     f = open("paramlist_gpu", "w")
@@ -42,13 +46,15 @@ if __name__ == '__main__':
         eqns_location = str(now.strftime('equations/%H-%M-%S-%m-%d-%Y'))
         print("generating new equations at " + eqns_location)
 
-        create_equations.create_eqns(eqns_location, num_vars, d_constraint, num_eqns)
+        max_eqns, max_qubits = create_equations.create_eqns(eqns_location, num_vars, d_constraint, num_eqns)
 
         f = open(eqns_location+".json", "w")
         f.write(json.dumps({
             "num_vars": num_vars,
             "d_constraint": d_constraint,
             "num_eqns": num_eqns,
+            "max_qubits": max_qubits,
+            "max_eqns": max_eqns,
         }))
         f.close()
     else:

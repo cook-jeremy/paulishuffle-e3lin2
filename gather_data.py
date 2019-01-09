@@ -10,30 +10,41 @@ if __name__ == '__main__':
     eqn_params = json.loads(f.read())
     f.close()
 
-    max_qubits = 0
-    max_eqns = 0
+    max_qubits = eqn_params["max_qubits"]
+    max_eqns = eqn_params["max_eqns"]
+
+    print("eqn:"+ str(run_params["eqns_location"]))
+    print("d:"+ str(eqn_params["d_constraint"]))
+    print("gamma:"+str(run_params["gamma"]))
+
 
     ################ Exact data
 
     exact_sum = 0
+    exact_error = None
 
     for i in range(eqn_params["num_eqns"]):
         try:
             f = open("output/exact_%d.o" % (i,), "r")
 
-            qubits = int(f.readline())
-            eqns = int(f.readline())
-            if qubits > max_qubits: max_qubits = qubits
-            if eqns > max_eqns: max_eqns = eqns
+            read = f.readline()
+            print(read)
+            if read == "": continue
+            value = float(read)
+            while value == int(value):
+                value = float(f.readline())
 
-            exact_sum += float(f.readline())/2
+            exact_sum += value/2
+
+            file_error = float(f.readline())
+            if exact_error is None: exact_error = file_error
+            elif exact_error != file_error:
+                raise ValueError("Files differ in van den nest error")
+
             f.close()
-        except Exception:
+        except Exception as e:
             print("Error in output/exact_%d.o" % (i,))
-            raise ValueError
-
-    print("Maximum qubits in subcircuit: "+ str(max_qubits))
-    print("Maximum eqns in subcircuit: "+ str(max_eqns))
+            raise e
 
     ################# GPU Data
 
@@ -63,20 +74,21 @@ if __name__ == '__main__':
 
     log_num_samples += run_params["log_num_gpus"]
 
-    print("log samples: "+str(log_num_samples))
-    for i in range(len(list(samples.keys()))):
-        print(str(i) + " - "+str(samples[i]))
+    # print("log samples: "+str(log_num_samples))
+    # for i in range(len(list(samples.keys()))):
+    #     print(str(i) + " - "+str(samples[i]))
 
     estimate, error, hoeffding = analyze.get_value(eqn_params["num_eqns"],\
             eqn_params["d_constraint"], log_num_samples, samples, run_params["gamma"], max_bin=max_eqns)
 
-
-
     ############## Export output
 
-    print("Estimate:\t"+str(estimate))
-    print("Exact answer:\t"+str(exact_sum))
-    print("Actual error:\t"+str(abs(estimate-exact_sum)))
-    print("Error bound:\t"+str(error))
-    print("Hoeffding:\t"+str(hoeffding))
+    print("GPU Estimate:\t"+str(estimate))
+    print("Nest Estimate:\t"+str(exact_sum))
+
+    print("Nest Error:\t"+str(abs(exact_error)))
+    print("GPU Error:\t"+str(hoeffding))
+    print("Smart GPU Error:\t"+str(error))
+
+    print("GPU Error > \t"+str(abs(estimate-exact_sum)-exact_error))
 

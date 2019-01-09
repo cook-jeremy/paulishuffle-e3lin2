@@ -1,0 +1,19 @@
+TACC: Starting up job 893065
+TACC: starting parallel tasks...
+--------------------------------------------------
+TACC Launcher -> 8 processors allocated.
+TACC Launcher -> 8 total tasks to complete.
+--------------------------------------------------
+ 
+TACC Launcher -> Initating task 1 on c222-603.maverick.tacc.utexas.edu (sample.exe equations/12-45-14-12-24-2018 0.785398 > output/tally_0.o 2> output/tally_0.e)
+TACC Launcher -> Initating task 4 on c222-702.maverick.tacc.utexas.edu (sample.exe equations/12-45-14-12-24-2018 0.785398 > output/tally_3.o 2> output/tally_3.e)
+TACC Launcher -> Initating task 8 on c222-802.maverick.tacc.utexas.edu (sample.exe equations/12-45-14-12-24-2018 0.785398 > output/tally_7.o 2> output/tally_7.e)
+TACC Launcher -> Initating task 7 on c222-801.maverick.tacc.utexas.edu (sample.exe equations/12-45-14-12-24-2018 0.785398 > output/tally_6.o 2> output/tally_6.e)
+TACC Launcher -> Initating task 2 on c222-604.maverick.tacc.utexas.edu (sample.exe equations/12-45-14-12-24-2018 0.785398 > output/tally_1.o 2> output/tally_1.e)
+TACC Launcher -> Initating task 5 on c222-703.maverick.tacc.utexas.edu (sample.exe equations/12-45-14-12-24-2018 0.785398 > output/tally_4.o 2> output/tally_4.e)
+TACC Launcher -> Initating task 6 on c222-704.maverick.tacc.utexas.edu (sample.exe equations/12-45-14-12-24-2018 0.785398 > output/tally_5.o 2> output/tally_5.e)
+TACC Launcher -> Initating task 3 on c222-701.maverick.tacc.utexas.edu (sample.exe equations/12-45-14-12-24-2018 0.785398 > output/tally_2.o 2> output/tally_2.e)
+TACC: Shutting down parallel environment.
+TACC: Shutdown complete. Exiting.
+Time elapsed: 699 sec
+Job Complete
