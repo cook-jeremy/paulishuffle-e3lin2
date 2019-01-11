@@ -61,7 +61,7 @@ def e3lin2_exact(i, eqns_location, gamma):
     f = open(eqns_location, "r")
     line = f.readline()
     while line:
-        all_eqns.append(map(int, line.split(",")))
+        all_eqns.append(list(map(int, line.split(","))))
         line = f.readline()
 
     base = set(all_eqns[i][:-1])  # qubits of base equation
@@ -88,8 +88,8 @@ def e3lin2_exact(i, eqns_location, gamma):
         eqn.append(neighbor_eqns[j][3])
         final_eqns.append(eqn)
 
-    print(len(qubits))
-    print(len(final_eqns))
+    #print(len(qubits))
+    #print(len(final_eqns))
 
     return e3lin2_exact_helper(num_vars, base_eqn, final_eqns, gamma)
 

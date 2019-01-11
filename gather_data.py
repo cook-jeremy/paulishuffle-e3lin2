@@ -13,10 +13,9 @@ if __name__ == '__main__':
     max_qubits = eqn_params["max_qubits"]
     max_eqns = eqn_params["max_eqns"]
 
-    print("eqn:"+ str(run_params["eqns_location"]))
-    print("d:"+ str(eqn_params["d_constraint"]))
-    print("gamma:"+str(run_params["gamma"]))
-
+    print("eqn: "+ str(run_params["eqns_location"]))
+    print("d: "+ str(eqn_params["d_constraint"]))
+    print("gamma: "+str(run_params["gamma"]))
 
     ################ Exact data
 
@@ -27,16 +26,15 @@ if __name__ == '__main__':
         try:
             f = open("output/exact_%d.o" % (i,), "r")
 
-            read = f.readline()
-            print(read)
-            if read == "": continue
-            value = float(read)
-            while value == int(value):
-                value = float(f.readline())
-
+            #read = f.readline()
+            #print(read)
+            #if read == "": continue
+            #value = float(read)
+            #while value == int(value):
+            value = float(f.readline())
             exact_sum += value/2
-
             file_error = float(f.readline())
+
             if exact_error is None: exact_error = file_error
             elif exact_error != file_error:
                 raise ValueError("Files differ in van den nest error")
@@ -86,6 +84,7 @@ if __name__ == '__main__':
     print("GPU Estimate:\t"+str(estimate))
     print("Nest Estimate:\t"+str(exact_sum))
 
+    #print("Nest Error:\t"+str(eqn_params["num_eqns"]*abs(exact_error)/2))
     print("Nest Error:\t"+str(abs(exact_error)))
     print("GPU Error:\t"+str(hoeffding))
     print("Smart GPU Error:\t"+str(error))

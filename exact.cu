@@ -15,10 +15,10 @@
 using namespace std;
 
 //Defined as powers of 2 
-#define samplesPerThread (long int) 5 // Number of samples generated per thread.
+#define samplesPerThread (long int) 10 // Number of samples generated per thread.
 #define threadsPerBlock (long int) 10   // Number of threads per block.
 #define blocksPerChunk (long int) 10    // Number of blocks per output array.
-#define numChunks (long int) 2         // Do the whole thing each time for a new gamma
+#define numChunks (long int) 6         // Do the whole thing each time for a new gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 
@@ -166,6 +166,12 @@ int main(int argc, char **argv) {
 
     //printf("%ld\n", nsamples);
     printf("%f\n", total);
+
+    float delta = 0.001;
+    float eps = sqrt(2*log(2/delta)/pow(2,nsamples));
+    //float error = eps*num_eqns/2;
+    printf("%f\n", eps);
+
     
     // Free memory
     free(h_eqn_masks);
