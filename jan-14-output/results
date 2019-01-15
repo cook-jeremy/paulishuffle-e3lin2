@@ -1,0 +1,49 @@
+eqn: equations/01-11-2019/d4
+d: 4
+gamma: 0.785398163397
+GPU Estimate:	0.295790500235
+Nest Estimate:	0.4293665
+Nest Error:	8.4e-05
+GPU Error:	0.00417237502992
+Smart GPU Error:	0.000192495762907
+GPU Error > 	0.133491999765
+
+eqn: equations/01-11-2019/d5
+d: 5
+gamma: 0.785398163397
+GPU Estimate:	-0.24735798618
+Nest Estimate:	-0.0578535
+Nest Error:	8.4e-05
+GPU Error:	0.0148920645617
+Smart GPU Error:	0.000467278991487
+GPU Error > 	0.18942048618
+
+eqn: equations/01-11-2019/d6
+d: 6
+gamma: 0.785398163397
+GPU Estimate:	-0.199278471984
+Nest Estimate:	-0.8270185
+Nest Error:	8.4e-05
+GPU Error:	0.050068500359
+Smart GPU Error:	0.000700885681977
+GPU Error > 	0.627656028016
+
+eqn: equations/01-11-2019/d7
+d: 7
+gamma: 0.785398163397
+GPU Estimate:	-0.0330250939534
+Nest Estimate:	-0.234679
+Nest Error:	8.4e-05
+GPU Error:	0.16634155133
+Smart GPU Error:	0.000777014498035
+GPU Error > 	0.201569906047
+
+eqn: equations/01-11-2019/d8
+d: 8
+gamma: 0.785398163397
+GPU Estimate:	0.0305526035416
+Nest Estimate:	0.130156
+Nest Error:	8.4e-05
+GPU Error:	0.53406400383
+Smart GPU Error:	0.00296035471922
+GPU Error > 	0.0995193964584
