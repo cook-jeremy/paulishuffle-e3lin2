@@ -5,16 +5,15 @@
 #include <time.h>
 #include <math.h>
 #include <curand.h>
-#include <curand_kernel.h>
+#include <curand_kernel.h> 
 #include <inttypes.h>
 #define PI 3.14159265358979323846
 using namespace std;
-
 //Defined as powers of 2
-#define samplesPerThread (long int) 9  // Number of samples generated per thread.
-#define threadsPerBlock (long int)10   // Number of threads per block.
-#define blocksPerChunk (long int)15    // Number of blocks per output array.
-#define numChunks (long int) 6        // Do the whole thing each time, same gamma
+#define samplesPerThread (long int) 10  // Number of samples generated per thread.
+#define threadsPerBlock (long int) 5   // Number of threads per block.
+#define blocksPerChunk (long int) 5    // Number of blocks per output array.
+#define numChunks (long int) 5        // Do the whole thing each time, same gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 
@@ -33,6 +32,7 @@ __device__ tally_t *d_chunk_tally;
 uint64_t *h_eqn_masks; // array of equations in bitmask form, i.e. x_2 + x_3 + x_4 for 5 variables is 01110
 bool *h_sols; // solutions to each equation, either 0 or 1
 int num_eqns;
+__device__ __constant__ int dbg = 0;
 
 __global__ void sample(int seed);
 
@@ -162,14 +162,7 @@ int main(int argc, char **argv) {
 }
 
 // Flip the sign of x if data has an odd number of 1's in it
-__device__ void parity(int* x, uint64_t data) {
-    while (data) {
-        *x *= -1;
-        data = data & (data - 1);
-    }
-}
-
-__device__ int test_parity(uint64_t data) {
+__device__ int parity(uint64_t data) {
     int x = 1;
     while(data) {
         x *= -1;
@@ -182,12 +175,15 @@ __device__ int test_parity(uint64_t data) {
 __device__ int get_rand_int(curandState_t state, int min, int max) {
     int out = curand(&state) % (max-min + 1);
     return out + 0;
-    /*
-    float rand_f = curand_uniform(&state);
-    // rand_f *= (1 + max - min);
-    rand_f *= 2;
-    return (int)ceil(rand_f);
-    */
+}
+
+__device__ int num_ones(uint64_t n) {
+    int count = 0;
+    while(n) {
+        count += n & 1;
+        n >>= 1;
+    }
+    return count;
 }
 
 __global__ void sample(int seed) {
@@ -199,6 +195,8 @@ __global__ void sample(int seed) {
     uint64_t xs, zs;
     tally_t num_D; 
     int sign;
+
+    if(dbg) printf("d_num_eqns: %d\n", d_num_eqns);
     
     for(int j = 0; j < (1 << samplesPerThread); j++) {
         num_D = 0;
@@ -206,34 +204,38 @@ __global__ void sample(int seed) {
 
         // Pick a random equation from eqn_masks
         int rand = get_rand_int(state, 0, d_num_eqns - 1);
-        uint64_t init_mask = d_eqn_masks[rand];
-        xs = init_mask;
-        zs = init_mask;
+        xs = d_eqn_masks[rand];
+        zs = xs;
         for(int i = 0; i < d_num_eqns; i++) {
+            if(dbg) printf("-------------------\n");
             uint64_t mask = d_eqn_masks[i];
-            if(test_parity(mask & xs) == -1) {
+            if(parity(mask & xs) == -1) {
                 // Doesn't commute
                 float rand_f = curand_uniform(&state);
                 if(rand_f <= d_consts[0]) {
                     // Apply ZZZ
-                    parity(&sign, xs & zs & mask);
+                    if(num_ones(xs & mask) == 1) {
+                        // change sign if overlap with X
+                        if((xs & zs & mask) == 0) sign *= -1;
+                    } else {
+                        // change sign if overlap with odd num of Y's
+                        sign *= parity(xs & zs & mask);
+                    }
                     zs ^= mask;
-                    //if((xs & mask) & ((xs & mask) - 1) == 0) sign *= -1;
-                    if((xs & mask) != 0) sign *= -1;
-                    sign *= 2*d_sols[i] - 1; // dabc
+                    sign *= 1 - 2*d_sols[i]; // dabc
                     sign *= d_consts[1]; // d_consts[1] is sign(sin(gamma))
                 } else {
-                    sign *= d_consts[2]; // d_consts[1] is sign(cos(gamma))
+                    sign *= d_consts[2]; // d_consts[2] is sign(cos(gamma))
                 }
                 num_D += 1;            
-            }
+            } 
         }
+
         // Because <+|Y|+> = <+|Z|+> = 0, we only care if both of these don't happen
         if (zs == 0) { 
             // Write to global output memory. Use atomic add to avoid sync issues.
             atomicAdd(&d_chunk_tally[num_D*2], (tally_t) 1);
             atomicAdd(&d_chunk_tally[num_D*2+1], (tally_t) sign);
-            //atomicAdd(&d_chunk_tally[rand*2], (tally_t) 1);
         }
     }
 }
