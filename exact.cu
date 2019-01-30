@@ -15,10 +15,10 @@
 using namespace std;
 
 //Defined as powers of 2 
-#define samplesPerThread (long int) 10 // Number of samples generated per thread.
-#define threadsPerBlock (long int) 10   // Number of threads per block.
-#define blocksPerChunk (long int) 5    // Number of blocks per output array.
-#define numChunks (long int) 6         // Do the whole thing each time for a new gamma
+#define samplesPerThread (long int) 3 // Number of samples generated per thread.
+#define threadsPerBlock (long int) 5   // Number of threads per block.
+#define blocksPerChunk (long int) 8    // Number of blocks per output array.
+#define numChunks (long int) 8         // Do the whole thing each time for a new gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 
@@ -53,7 +53,7 @@ int count_lines(char *filename) {
     return lines;
 }
 
-void count_vars(int *vars, int var) {
+void count_vars2(int *vars, int var) {
     bool flag = false;
     for(int i = 0; i < num_vars; i++) {
         if(vars[i] == var) flag = true;
@@ -65,10 +65,7 @@ void count_vars(int *vars, int var) {
     }
 }
 
-void read_file(char* filename) {
-    num_eqns = count_lines(filename);
-    h_eqn_masks = (uint64_t *) malloc(num_eqns*sizeof(uint64_t));
-    h_sols = (bool *) malloc(num_eqns*sizeof(bool));
+void count_vars(char *filename) {
     int *vars = (int *) malloc(3*num_eqns*sizeof(int));
 
     // initialize to all -1
@@ -84,12 +81,35 @@ void read_file(char* filename) {
         char *pt;
         pt = strtok(buff, ",");
         int counter = 0;
+        while (pt != NULL) {
+            if(counter < 3) count_vars2(vars, atoi(pt)); 
+            pt = strtok(NULL, ",");
+            counter++;
+        }
+    }
+    free(vars);
+    fclose(fp);
+}
+
+void read_file(char* filename) {
+    num_eqns = count_lines(filename);
+    count_vars(filename);
+    h_eqn_masks = (uint64_t *) malloc(num_eqns*sizeof(uint64_t));
+    h_sols = (bool *) malloc(num_eqns*sizeof(bool));
+        
+    // Create bitmasks    
+    FILE *fp = fopen(filename, "r");
+    for(int i = 0; i < num_eqns; i++) {
+        char buff[255];
+        fscanf(fp, "%s", buff);
+        char *pt;
+        pt = strtok(buff, ",");
+        int counter = 0;
         uint64_t b_eqn = 0;
         while (pt != NULL) {
             int a = atoi(pt);
             if(counter < 3) {
-                count_vars(vars, a); 
-                b_eqn += pow(2,a);
+                b_eqn += pow(2, a);
             } else {
                 h_sols[i] = a;
             }
@@ -100,7 +120,6 @@ void read_file(char* filename) {
         h_eqn_masks[i] = b_eqn;
         b_eqn = 0;
     }
-    free(vars);
     fclose(fp);
 }
 
@@ -158,19 +177,19 @@ int main(int argc, char **argv) {
         cudaMemcpy(&h_total, total_ptr, sizeof(double), cudaMemcpyDeviceToHost);
         cudaMemset(total_ptr, 0, sizeof(double));
 
-        h_total /= (1 << samplesPerThread) * (1 << threadsPerBlock) * (1 << blocksPerChunk);
+        //h_total /= ((1 << samplesPerThread) * (1 << threadsPerBlock) * (1 << blocksPerChunk));
         total += h_total;
     }
 
-    total /= (1 << numChunks);
+    total /= (1 << nsamples);
 
     //printf("%ld\n", nsamples);
-    printf("%f\n", total);
+    printf("%lf\n", total);
 
-    float delta = 0.001;
-    float eps = sqrt(2*log(2/delta)/pow(2,nsamples));
-    //float error = eps*num_eqns/2;
-    printf("%f\n", eps);
+    double delta = 0.01;
+    double eps = sqrt(2*log(2/delta)/ (1 << nsamples));
+    double error = eps*num_eqns/2;
+    printf("%lf\n", error);
 
     return 0;
 }
@@ -191,13 +210,13 @@ __device__ int num_ones(uint64_t n) {
 }
 
 
-__device__ thrust::complex<float> inner_x_w(uint64_t x)  {
-    thrust::complex<float> total_phase = 1/sqrt(pow(2.0f, d_num_vars));
+__device__ thrust::complex<double> inner_x_w(uint64_t x)  {
+    thrust::complex<double> total_phase = 1.0;
     // for each equation, calculate overlap
     for(int i = 0; i < d_num_eqns; i++) { 
-        double arg1 = pow(-1.0f, d_sols[i] + num_ones(x & d_eqn_masks[i]));
-        thrust::complex<float> arg2 = -thrust::complex<float>(0.0f, 1.0f)*d_gamma*0.5*arg1;
-        total_phase *= pow((float) E, arg2);
+        double arg1 = pow(-1.0, (double) (d_sols[i] + num_ones(x & d_eqn_masks[i])));
+        thrust::complex<double> arg2 = -thrust::complex<double>(0.0, 1.0)*d_gamma*0.5*arg1;
+        total_phase *= thrust::exp(arg2);
     }
     return total_phase;
 }
@@ -210,14 +229,14 @@ __global__ void sample(int seed) {
 
     uint64_t y = d_eqn_masks[d_picked_eqn];
     uint64_t x;
-    thrust::complex<float> alpha, inner1, inner2, final;
+    thrust::complex<double> alpha, inner1, inner2, final;
     
     for(int j = 0; j < (1 << samplesPerThread); j++) {
-        x = get_rand_int(&state, 0, pow(2.0f, d_num_vars) - 1);
-        alpha = thrust::complex<float>(0.0f, -1.0f)*pow(-1.0f, num_ones(x & y));
+        x = get_rand_int(&state, 0, pow(2.0, (double) d_num_vars) - 1);
+        alpha = -thrust::complex<double>(0.0, 1.0)*pow(-1.0, (double) num_ones(x & y));
         inner1 = thrust::conj(inner_x_w(x ^ y));
         inner2 = inner_x_w(x);
-        final = pow(2.0f, d_num_vars)*inner1*inner2*alpha;
+        final = inner1*inner2*alpha;
         atomicAdd(&d_total, final.real());
     }
 }

@@ -7,13 +7,13 @@
 #include <curand.h>
 #include <curand_kernel.h> 
 #include <inttypes.h>
-#define PI 3.14159265358979323846
-using namespace std;
+#define PI 3.14159265358979323846 
+using namespace std; 
 //Defined as powers of 2
-#define samplesPerThread (long int) 10  // Number of samples generated per thread.
-#define threadsPerBlock (long int) 5   // Number of threads per block.
-#define blocksPerChunk (long int) 5    // Number of blocks per output array.
-#define numChunks (long int) 5        // Do the whole thing each time, same gamma
+#define samplesPerThread (long int) 5  // Number of samples generated per thread.
+#define threadsPerBlock (long int) 8   // Number of threads per block.
+#define blocksPerChunk (long int) 10    // Number of blocks per output array.
+#define numChunks (long int) 8        // Do the whole thing each time, same gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 
@@ -41,12 +41,16 @@ int count_lines(char *filename) {
     FILE *fp = fopen(filename,"r");
     int ch=0;
     int lines=0;
-    if (fp == NULL) return 0;
+    if (fp == NULL) {
+        printf("Error reading file\n");
+        exit(0);
+        return 0;
+    }
     while(!feof(fp)) {
         ch = fgetc(fp);
         if(ch == '\n') lines++;
     }
-    fclose(fp);
+    //fclose(fp);
     return lines;
 }
 
@@ -84,7 +88,7 @@ void read_file(char* filename) {
 int main(int argc, char **argv) {
     // first arugment is equation file, second is gamma
     if(argc < 3) {
-        cout << "not enough arguments, please specify <equation file> and <gamma>" << endl;
+        std::cout << "not enough arguments, please specify <equation file> and <gamma>" << std::endl;
         return 0;
     }
 
@@ -132,11 +136,21 @@ int main(int argc, char **argv) {
     memset(h_chunk_tally, 0, tally_size*sizeof(tally_t));
     memset(output_tally, 0, tally_size*sizeof(tally_t));
 
+    //time_t current_time;
+
     for (int j = 0; j < (1 << numChunks); j++) {
-        //std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << std::endl;
+        //current_time = time(NULL);
+        //std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << " time: " << ctime(&current_time);
 
         // Take samples
-        sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+
+        // Take samples
+        sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>((double) now.tv_nsec); //random version
+
+
+        //sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
 
         // Wait for GPU to finish before accessing on host
         cudaDeviceSynchronize();
@@ -158,6 +172,7 @@ int main(int argc, char **argv) {
     // Free memory
     free(h_chunk_tally);
     free(output_tally);
+    cudaFree(d_ptr);
     return 0;
 }
 
