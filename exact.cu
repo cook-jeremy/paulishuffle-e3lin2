@@ -1,24 +1,23 @@
 // must compile with flag: -arch=sm_60
 #include <stdio.h>
-#include <iostream>
+#include <iostream> 
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
 #include <math.h> 
-#include <curand.h>
+#include <curand.h> 
 #include <curand_kernel.h>
 #include <inttypes.h>
-//#include <complex.h>
 #include <thrust/complex.h>
 #define PI 3.14159265358979323846
 #define E  2.71828182845904523536
 using namespace std;
 
 //Defined as powers of 2 
-#define samplesPerThread (long int) 3 // Number of samples generated per thread.
+#define samplesPerThread (long int) 5 // Number of samples generated per thread.
 #define threadsPerBlock (long int) 5   // Number of threads per block.
-#define blocksPerChunk (long int) 8    // Number of blocks per output array.
-#define numChunks (long int) 8         // Do the whole thing each time for a new gamma
+#define blocksPerChunk (long int) 5   // Number of blocks per output array.
+#define numChunks (long int) 5         // Do the whole thing each time for a new gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 
@@ -39,61 +38,7 @@ int num_vars;
 
 __global__ void sample(int seed);
 
-// Count number of lines in file, which indicates number of equations
-int count_lines(char *filename) {
-    FILE *fp = fopen(filename,"r");
-    int ch = 0;
-    int lines = 0;
-    if (fp == NULL) return 0;
-    while(!feof(fp)) {
-        ch = fgetc(fp);
-        if(ch == '\n') lines++;
-    }
-    fclose(fp);
-    return lines;
-}
-
-void count_vars2(int *vars, int var) {
-    bool flag = false;
-    for(int i = 0; i < num_vars; i++) {
-        if(vars[i] == var) flag = true;
-    }
-    // add var to list
-    if(!flag) {
-        vars[num_vars] = var;
-        num_vars++;
-    }
-}
-
-void count_vars(char *filename) {
-    int *vars = (int *) malloc(3*num_eqns*sizeof(int));
-
-    // initialize to all -1
-    for(int i = 0; i < 3*num_eqns; i++) {
-        vars[i] = -1;
-    }
-    
-    // Create bitmasks    
-    FILE *fp = fopen(filename, "r");
-    for(int i = 0; i < num_eqns; i++) {
-        char buff[255];
-        fscanf(fp, "%s", buff);
-        char *pt;
-        pt = strtok(buff, ",");
-        int counter = 0;
-        while (pt != NULL) {
-            if(counter < 3) count_vars2(vars, atoi(pt)); 
-            pt = strtok(NULL, ",");
-            counter++;
-        }
-    }
-    free(vars);
-    fclose(fp);
-}
-
 void read_file(char* filename) {
-    num_eqns = count_lines(filename);
-    count_vars(filename);
     h_eqn_masks = (uint64_t *) malloc(num_eqns*sizeof(uint64_t));
     h_sols = (bool *) malloc(num_eqns*sizeof(bool));
         
@@ -124,15 +69,16 @@ void read_file(char* filename) {
 }
 
 int main(int argc, char **argv) {
-    // first arugment is equation file, second is gamma
-    if(argc != 4) {
-        cout << "not enough arguments, please specify <equation number> <equation file> <gamma>" << endl;
+    if(argc != 5) {
+        cout << "not enough arguments, please specify\n <equation file> <num_eqns> <num_vars> <gamma>" << endl;
         return 0;
     }
 
-    int picked_eqn = strtod(argv[1], NULL);
-    double gamma = strtod(argv[3], NULL);
-    read_file(argv[2]);
+    // Read off arguments and eqns masks from eqn file
+    num_eqns = strtod(argv[2], NULL);
+    num_vars = strtod(argv[3], NULL);
+    read_file(argv[1]);
+    double gamma = strtod(argv[4], NULL);
 
     // Copy bit mask array to device
     uint64_t *d_ptr;
@@ -144,53 +90,48 @@ int main(int argc, char **argv) {
     cudaMalloc((void **)&sol_ptr, num_eqns*sizeof(bool));
     cudaMemcpyToSymbol(d_sols, &sol_ptr, sizeof(bool *));
     cudaMemcpy(sol_ptr, h_sols, num_eqns*sizeof(bool), cudaMemcpyHostToDevice);
-    // Copy num equations and vars to device
+    // Copy num equations, vars, and gamma to device
     cudaMemcpyToSymbol(d_num_eqns, &num_eqns, sizeof(int));
     cudaMemcpyToSymbol(d_num_vars, &num_vars, sizeof(int));
-    cudaMemcpyToSymbol(d_picked_eqn, &picked_eqn, sizeof(int));
     cudaMemcpyToSymbol(d_gamma, &gamma, sizeof(double));
     
     // We don't need the masks or sols on the host.
     free(h_eqn_masks);
     free(h_sols);
 
-    double h_total = 0;
-    double total = 0;
-    double *total_ptr;
-    cudaGetSymbolAddress((void **)&total_ptr, d_total);
+    double estimate = 0;
 
-    for (int j = 0; j < (1 << numChunks); j++) {
-        //std::cout << "Running chunk " << (j+1) << " of " << (1 << numChunks) << std::endl;
-        
-        // Get current nanosecond for seed
-        struct timespec now;
-        clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+    for(int i = 0; i < num_eqns; i++) {
+        // copy over eqn #
+        cudaMemcpyToSymbol(d_picked_eqn, &i, sizeof(int));
 
-        // Take samples
-        sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>((double) now.tv_nsec); //random version
+        double h_total = 0;
+        double *total_ptr;
+        cudaGetSymbolAddress((void **)&total_ptr, d_total);
 
-        // Wait for GPU to finish before accessing on host
-        cudaDeviceSynchronize();
-        
-        h_total = 0;
-        // Copy total to host
-        cudaMemcpy(&h_total, total_ptr, sizeof(double), cudaMemcpyDeviceToHost);
-        cudaMemset(total_ptr, 0, sizeof(double));
+        for (int j = 0; j < (1 << numChunks); j++) {
+            // Get current nanosecond for seed
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+            sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>((double) now.tv_nsec); //random version
 
-        //h_total /= ((1 << samplesPerThread) * (1 << threadsPerBlock) * (1 << blocksPerChunk));
-        total += h_total;
+            // Wait for GPU to finish before accessing on host
+            cudaDeviceSynchronize();
+            
+            h_total = 0;
+            // Copy total to host
+            cudaMemcpy(&h_total, total_ptr, sizeof(double), cudaMemcpyDeviceToHost);
+            cudaMemset(total_ptr, 0, sizeof(double));
+            estimate += h_total;
+        }
     }
-
-    total /= (1 << nsamples);
-
-    //printf("%ld\n", nsamples);
-    printf("%lf\n", total);
-
-    double delta = 0.01;
-    double eps = sqrt(2*log(2/delta)/ (1 << nsamples));
-    double error = eps*num_eqns/2;
+    
+    estimate /= 2*(1 << nsamples);
+    // Print estimate and error
+    printf("%lf\n", estimate);
+    double delta = 0.05;
+    double error = num_eqns*sqrt(4*log(2/delta)/ (1 << nsamples))/2;
     printf("%lf\n", error);
-
     return 0;
 }
 
@@ -209,18 +150,16 @@ __device__ int num_ones(uint64_t n) {
     return count;
 }
 
-
-__device__ thrust::complex<double> inner_x_w(uint64_t x)  {
-    thrust::complex<double> total_phase = 1.0;
+__device__ thrust::complex<float> inner_x_w(uint64_t x)  {
+    thrust::complex<float> total_phase = 1.0;
     // for each equation, calculate overlap
     for(int i = 0; i < d_num_eqns; i++) { 
-        double arg1 = pow(-1.0, (double) (d_sols[i] + num_ones(x & d_eqn_masks[i])));
-        thrust::complex<double> arg2 = -thrust::complex<double>(0.0, 1.0)*d_gamma*0.5*arg1;
+        float arg1 = pow(-1.0f, (float) (d_sols[i] + num_ones(x & d_eqn_masks[i])));
+        thrust::complex<float> arg2 = -thrust::complex<float>(0.0f, 1.0f)*d_gamma*0.5*arg1;
         total_phase *= thrust::exp(arg2);
     }
     return total_phase;
 }
-
 
 __global__ void sample(int seed) {
     // Initialize curand
@@ -229,11 +168,12 @@ __global__ void sample(int seed) {
 
     uint64_t y = d_eqn_masks[d_picked_eqn];
     uint64_t x;
-    thrust::complex<double> alpha, inner1, inner2, final;
+    thrust::complex<float> alpha, inner1, inner2, final;
     
     for(int j = 0; j < (1 << samplesPerThread); j++) {
-        x = get_rand_int(&state, 0, pow(2.0, (double) d_num_vars) - 1);
-        alpha = -thrust::complex<double>(0.0, 1.0)*pow(-1.0, (double) num_ones(x & y));
+        x = get_rand_int(&state, 0, pow(2.0f, (float) d_num_vars) - 1);
+        alpha = -thrust::complex<float>(0.0f, 1.0f)*pow(-1.0f, (float) (d_sols[d_picked_eqn] + num_ones(x & y)));
+        //alpha = -thrust::complex<float>(0.0f, 1.0f)*pow(-1.0f, (float) (num_ones(x & y)));
         inner1 = thrust::conj(inner_x_w(x ^ y));
         inner2 = inner_x_w(x);
         final = inner1*inner2*alpha;

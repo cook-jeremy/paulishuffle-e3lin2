@@ -3,17 +3,16 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
-#include <math.h>
-#include <curand.h>
-#include <curand_kernel.h> 
-#include <inttypes.h>
+#include <math.h> 
+#include <curand.h> #include <curand_kernel.h> 
+#include <inttypes.h> 
 #define PI 3.14159265358979323846 
 using namespace std; 
 //Defined as powers of 2
-#define samplesPerThread (long int) 5  // Number of samples generated per thread.
-#define threadsPerBlock (long int) 8   // Number of threads per block.
-#define blocksPerChunk (long int) 10    // Number of blocks per output array.
-#define numChunks (long int) 8        // Do the whole thing each time, same gamma
+#define samplesPerThread (long int) 10  // Number of samples generated per thread.
+#define threadsPerBlock (long int) 5   // Number of threads per block.
+#define blocksPerChunk (long int) 5    // Number of blocks per output array.
+#define numChunks (long int) 5         // Do the whole thing each time, same gamma
 #define samplesPerChunk samplesPerThread + threadsPerBlock + blocksPerChunk
 #define nsamples numChunks + samplesPerChunk
 
@@ -25,37 +24,20 @@ __device__ __constant__ bool *d_sols;
 __device__ __constant__ int d_num_eqns;
 __device__ __constant__ double d_consts[num_consts];
 // Chunktally stores the number of samples with n encountered D's in d_chunk_tally[2*t],
-// and the tally taking into acount sign in d_chunk_tally[2*t+1]
+// and the tally taking into acount the net sign in d_chunk_tally[2*t+1]
 __device__ tally_t *d_chunk_tally;
    
 // Host Memory
 uint64_t *h_eqn_masks; // array of equations in bitmask form, i.e. x_2 + x_3 + x_4 for 5 variables is 01110
 bool *h_sols; // solutions to each equation, either 0 or 1
 int num_eqns;
+int d_constraint;
 __device__ __constant__ int dbg = 0;
 
 __global__ void sample(int seed);
 
-// Count number of lines in file, which indicates number of equations
-int count_lines(char *filename) {
-    FILE *fp = fopen(filename,"r");
-    int ch=0;
-    int lines=0;
-    if (fp == NULL) {
-        printf("Error reading file\n");
-        exit(0);
-        return 0;
-    }
-    while(!feof(fp)) {
-        ch = fgetc(fp);
-        if(ch == '\n') lines++;
-    }
-    //fclose(fp);
-    return lines;
-}
-
 void read_file(char* filename) {
-    num_eqns = count_lines(filename);
+    //num_eqns = count_lines(filename);
     h_eqn_masks = (uint64_t *) malloc(num_eqns*sizeof(uint64_t));
     h_sols = (bool *) malloc(num_eqns*sizeof(bool));
     
@@ -88,11 +70,13 @@ void read_file(char* filename) {
 int main(int argc, char **argv) {
     // first arugment is equation file, second is gamma
     if(argc < 3) {
-        std::cout << "not enough arguments, please specify <equation file> and <gamma>" << std::endl;
+        std::cout << "Please specify\n <equation file> <num_eqns> <d_constraint> <gamma>" << std::endl;
         return 0;
     }
-
-    double gamma = strtod(argv[2],NULL);
+    
+    num_eqns = strtod(argv[2], NULL);
+    d_constraint = strtod(argv[3], NULL);
+    double gamma = strtod(argv[4], NULL);
     read_file(argv[1]);
 
     // Copy bit mask array to device
@@ -108,7 +92,7 @@ int main(int argc, char **argv) {
     // Copy num equations to device
     cudaMemcpyToSymbol(d_num_eqns, &num_eqns, sizeof(int));
     
-    int tally_size = 2*(num_eqns+1);
+    int tally_size = 2*(3*(d_constraint - 1) + 2); // + 1 extra because we have to include 0
 
     // Malloc space for d_chunk_tally
     tally_t *t_ptr;
@@ -148,7 +132,6 @@ int main(int argc, char **argv) {
 
         // Take samples
         sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>((double) now.tv_nsec); //random version
-
 
         //sample<<<(1 << blocksPerChunk), (1 << threadsPerBlock)>>>(time(0)); //random version
 
@@ -243,7 +226,7 @@ __global__ void sample(int seed) {
                     sign *= d_consts[2]; // d_consts[2] is sign(cos(gamma))
                 }
                 num_D += 1;            
-            } 
+            }
         }
 
         // Because <+|Y|+> = <+|Z|+> = 0, we only care if both of these don't happen

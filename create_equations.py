@@ -18,7 +18,7 @@ def convert_eqns(input_eqns):
         eqn_list.append(eqn)
     return eqn_list
 
-def create_eqns(filename, num_vars = 20, d_constraint = 30, num_eqns = 45):
+def create_eqns(filename, num_vars = 5, d_constraint = 4, num_eqns = 5):
     # get input matrix and result, Ax = b
     input_eqns = gen_equations.gen_eqns(num_vars, d_constraint, num_eqns)
     # equation list
@@ -31,6 +31,13 @@ def create_eqns(filename, num_vars = 20, d_constraint = 30, num_eqns = 45):
         fp.write(to_write)
 
         #pickle.dump(f_results, fp)
+    
+    fp.close()
+    fp_json = open(filename + ".json", 'w')
+
+    to_write =  '{\"max_eqns\": ' + str(1+(d_constraint-1)*3) + ', \"num_eqns\": ' + str(num_eqns) + ', \"num_vars\": ' + str(num_vars) + ', \"d_constraint\": ' + str(d_constraint) + ', \"max_qubits\": ' + str(3+3*(d_constraint-1)*2) + '}'
+    fp_json.write(to_write)
+    fp_json.close()
 
     return gen_equations.get_cost_stats(input_eqns[0])
 

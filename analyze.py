@@ -7,7 +7,7 @@ def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma, max_b
     if max_bin is None:
         # get bound on number of quasiprobability samples
         max_bin = 3*(d_constraint-1) + 1
-        if (num_eqns < max_bin): max_bin = num_eqns
+        #if (num_eqns < max_bin): max_bin = num_eqns
         num_eqns = float(num_eqns)
 
     D = abs(math.sin(gamma)) + abs(math.cos(gamma))
@@ -27,7 +27,7 @@ def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma, max_b
 
     delta = 0.01
     eConst = math.sqrt(math.log(2/delta) / 2)
-    # hoeffding error = eConst * range / sqrt(numer of sam[ples)
+    # hoeffding error = eConst * range / sqrt(numer of samples)
 
     # this is unstable because big numbers are big
     # hoeffding = eConst * 2 * D**max_bin / 2**(log_num_samples/2)
@@ -58,10 +58,14 @@ def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma, max_b
     nonzero_estimate = 0
     for i in range(max_bin+1):
         nonzero_estimate += sample_dict[i][1]*D**i
-    nonzero_estimate /= num_nonzero_samples
+        
+    if num_nonzero_samples != 0:  
+        nonzero_estimate /= num_nonzero_samples
 
     # error on nonzero samples mean
-    nonzero_error = eConst * 2 / math.sqrt(num_nonzero_samples)
+    nonzero_error = 0
+    if num_nonzero_samples != 0:
+        nonzero_error = eConst * 2 / math.sqrt(num_nonzero_samples)
     nonzero_error *= (num_eqns/2)
     for i in range(max_bin): nonzero_error *= D
 
@@ -71,6 +75,3 @@ def get_value(num_eqns, d_constraint, log_num_samples, sample_dict, gamma, max_b
     error += nonzero_error * p_error
 
     return estimate, error, hoeffding
-
-
-
