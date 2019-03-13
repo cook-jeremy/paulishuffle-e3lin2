@@ -1,4 +1,4 @@
-num qubits = 32, num eqns = 40, d = 4, num samples = 2^30
+num qubits = 32, num eqns = 40, d = 4, num samples = 2^30, nest_error = e_nest
 Gamma, Nest estimate, Nest error, Pauli estimate, Pauli hoeffding
 0,0.0,0.0028098235021989317,0.0,0.001986845252342199
 0.12566370612,0.701677,0.0028098235021989317,0.70307776913494,0.006031662257725778
